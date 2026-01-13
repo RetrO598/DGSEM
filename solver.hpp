@@ -39,7 +39,7 @@ public:
 
   void apply_jacobian(Solution<Mesh, Basis, Equations> &sol);
 
-  void rhs();
+  void calc_rhs(Solution<Mesh, Basis, Equations> &sol);
 
 private:
   Equations eq;
@@ -118,6 +118,13 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::rhs() {}
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux,
+                      Mesh>::calc_rhs(Solution<Mesh, Basis, Equations> &sol) {
+  sol.du.fill(0.0); // Clear the residual before accumulation
+  calc_volume_integral(sol);
+  calc_interface_flux(sol);
+  calc_surface_integral(sol);
+  apply_jacobian(sol);
+}
 
 } // namespace DGSEM

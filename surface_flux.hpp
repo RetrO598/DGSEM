@@ -3,7 +3,6 @@
 #include "equations.hpp"
 #include <array>
 #include <cstddef>
-#include <iostream>
 #include <xtensor/core/xtensor_forward.hpp>
 
 namespace DGSEM {

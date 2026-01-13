@@ -184,6 +184,19 @@ struct Solution {
                                       surface_flux_value);
   }
 
+  Solution() = default;
+
+  Solution clone_shape() const {
+    Solution tmp;
+    tmp.u.resize(u.shape());
+    tmp.du.resize(du.shape());
+    tmp.surface_flux_value.resize(surface_flux_value.shape());
+    tmp.u.fill(0.0);
+    tmp.du.fill(0.0);
+    tmp.surface_flux_value.fill(0.0);
+    return tmp;
+  }
+
   ndarray u;
   ndarray du;
   ndarray surface_flux_value;
