@@ -1,6 +1,8 @@
 #pragma once
 #include "equations.hpp"
-#include <iostream>
+#include <array>
+#include <cstddef>
+#include <xtensor/core/xtensor_forward.hpp>
 namespace DGSEM {
 enum class BoundaryCondition {
   Periodic,
@@ -11,26 +13,53 @@ enum class BoundaryCondition {
   Custom,
 };
 
-template <class Basis, class Equations, class BoundaryType>
-struct BoundaryDispatcher;
+template <class Basis, class Equations, BoundaryCondition BoundaryType,
+          std::size_t NDIMS>
+struct BoundaryImpl;
 
 template <class Basis, class Equations>
 struct PeriodicBoundary {
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename traits::value_type;
-  void operator()(const value_type &u) {
-    std::cout << "Periodic Boundary Condition is not implemented yet." << "\n";
+  void operator()(const xt::xarray<value_type> &u,
+                  xt::xarray<value_type> &surface_flux) {
+    return;
   }
 };
 
 template <class Basis, class Equations>
-struct BoundaryDispatcher<Basis, Equations,
-                          PeriodicBoundary<Equations, Basis>> {
+struct BoundaryImpl<Basis, Equations, BoundaryCondition::Periodic, 1> {
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename traits::value_type;
-  static inline void apply(const value_type &u) {
-    PeriodicBoundary<Equations, Basis> bc{};
-    bc(u);
+
+  inline static void apply(const std::array<std::size_t, 1> &n_cells,
+                           std::size_t iboundary,
+                           const xt::xarray<value_type> &u,
+                           xt::xarray<value_type> &surface_flux) {
+    PeriodicBoundary<Basis, Equations> bc{};
+    bc(u, surface_flux);
+  }
+};
+
+template <class Basis, class Equations, std::size_t NDIMS>
+struct BoundaryDispatcher {
+  using traits = equations::EquationTraits<Equations>;
+  using value_type = typename traits::value_type;
+
+  inline constexpr static void
+  apply(BoundaryCondition bc, const std::array<std::size_t, NDIMS> &n_cells,
+        std::size_t iboundary, const xt::xarray<value_type> &u,
+        xt::xarray<value_type> &surface_flux) {
+
+    switch (bc) {
+    case BoundaryCondition::Periodic:
+      BoundaryImpl<Basis, Equations, BoundaryCondition::Periodic, NDIMS>::apply(
+          n_cells, iboundary, u, surface_flux);
+      break;
+
+    default:
+      throw std::runtime_error("Unsupported BC");
+    }
   }
 };
 } // namespace DGSEM

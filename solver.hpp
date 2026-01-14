@@ -1,4 +1,5 @@
 #pragma once
+#include "boundary_condition.hpp"
 #include "data_container.hpp"
 #include "equations.hpp"
 #include "initial_condition.hpp"
@@ -36,6 +37,8 @@ public:
   void calc_interface_flux(Solution<Mesh, Basis, Equations> &sol);
 
   void calc_surface_integral(Solution<Mesh, Basis, Equations> &sol);
+
+  void apply_boundary_condition(Solution<Mesh, Basis, Equations> &sol);
 
   void apply_jacobian(Solution<Mesh, Basis, Equations> &sol);
 
@@ -109,6 +112,22 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+    apply_boundary_condition(Solution<Mesh, Basis, Equations> &sol) {
+  for (std::size_t i = 0; i < NDIMS; ++i) {
+    auto bc1 = mesh.get_boundary(i);
+    auto bc2 = mesh.get_boundary(i + NDIMS);
+
+    BoundaryDispatcher<Basis, Equations, NDIMS>::apply(
+        bc1, mesh.get_num_cells(), i, sol.u, sol.surface_flux_value);
+
+    BoundaryDispatcher<Basis, Equations, NDIMS>::apply(
+        bc2, mesh.get_num_cells(), i + NDIMS, sol.u, sol.surface_flux_value);
+  }
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
     apply_jacobian(Solution<Mesh, Basis, Equations> &sol) {
   std::size_t total_elements = mesh.get_nelem();
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
@@ -124,6 +143,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux,
   calc_volume_integral(sol);
   calc_interface_flux(sol);
   calc_surface_integral(sol);
+  apply_boundary_condition(sol);
   apply_jacobian(sol);
 }
 

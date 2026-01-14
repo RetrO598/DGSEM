@@ -34,7 +34,8 @@ private:
   std::size_t num_boundarys;
   std::array<T, 2 * NDIM> domain; // [xmin, xmax, ymin, ymax, zmin, zmax]
   std::array<std::size_t, NDIM> n_cells;
-  std::array<BoundaryCondition, 2 * NDIM> boundary_conditions;
+  std::array<BoundaryCondition, 2 * NDIM>
+      boundary_conditions; // [xmin, ymin, zmin, xmax, ymax, zmax]
   std::size_t nelem;
 };
 
