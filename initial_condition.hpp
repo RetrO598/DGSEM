@@ -70,4 +70,25 @@ public:
     return {value};
   }
 };
+
+template <class T>
+class GaussianInitial
+    : public AbstractInitial<GaussianInitial<T>,
+                             equations::LinearScalarAdvection1D<T>> {
+public:
+  using Eq = equations::LinearScalarAdvection1D<T>;
+  using Base = AbstractInitial<GaussianInitial<T>,
+                               equations::LinearScalarAdvection1D<T>>;
+  using value_type = T;
+  inline constexpr static std::size_t NDIMS = Eq::NDIMS;
+  inline constexpr static std::size_t NVARS = Eq::NVARS;
+
+  GaussianInitial() = default;
+
+  std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
+    T x = coordinate[0];
+    T value = std::exp(-50.0 * x * x);
+    return {value};
+  }
+};
 } // namespace DGSEM

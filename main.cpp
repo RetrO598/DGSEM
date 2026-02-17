@@ -48,7 +48,9 @@ int main() {
 
   DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
 
-  DGSEM::SinwaveInitial<double> initial{};
+  // DGSEM::SinwaveInitial<double> initial{};
+
+  DGSEM::GaussianInitial<double> initial{};
 
   std::cout << "Testing solver.initialize()..." << std::endl;
   solver.initialize(initial, sol);
@@ -56,7 +58,7 @@ int main() {
   // solver.calc_rhs(sol);
   using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
   TimeIntegrator time_integrator(sol);
-  const double t_final = 1.0; // One full period for wave speed c=1
+  const double t_final = 40.0; // One full period for wave speed c=1
   const double cfl = 0.1;
   const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
   const double dt = cfl * dx / eq.get_wave_speed();
