@@ -11,7 +11,7 @@ namespace Basis {
 
 template <class T, std::size_t Polydeg>
 class LobattoLegendreBasis {
- public:
+public:
   static constexpr std::size_t NNodes = Polydeg + 1;
   inline static detail::GLL::Data<T, NNodes> data =
       detail::GLL::gauss_lobatto_nodes_weights<T, NNodes>();
@@ -42,8 +42,12 @@ class LobattoLegendreBasis {
   inline static Mat<T, NNodes, NNodes> derivative_dhat = detail::GLL::calc_dhat(
       std::span<const T, NNodes>{nodes}, std::span<const T, NNodes>{weights});
 
+  inline static Mat<T, NNodes, NNodes> inverse_vandermonde_legendre =
+      detail::GLL::inverse_vandermonde_legendre(
+          std::span<const T, NNodes>{nodes});
+
   LobattoLegendreBasis() = delete;
 };
 
-}  // namespace Basis
-}  // namespace DGSEM
+} // namespace Basis
+} // namespace DGSEM

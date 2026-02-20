@@ -6,8 +6,10 @@
 #include "jacobian.hpp"
 #include "surface_flux.hpp"
 #include "surface_integral.hpp"
+#include "volume_flux.hpp"
 #include <array>
 #include <cmath>
+#include <concepts>
 #include <cstddef>
 
 namespace DGSEM {
@@ -34,6 +36,9 @@ public:
 
   void calc_volume_integral(Solution<Mesh, Basis, Equations> &sol);
 
+  void calc_volume_integral(Solution<Mesh, Basis, Equations> &sol)
+    requires std::derived_from<VolumeFlux, VolumeIntegralShockCapturingBase>;
+
   void calc_interface_flux(Solution<Mesh, Basis, Equations> &sol);
 
   void calc_surface_integral(Solution<Mesh, Basis, Equations> &sol);
@@ -44,10 +49,22 @@ public:
 
   void calc_rhs(Solution<Mesh, Basis, Equations> &sol);
 
+  void set_indicator_parameters(value_type alpha_max_, value_type alpha_min_,
+                                bool alpha_smooth_) {
+    alpha_max = alpha_max_;
+    alpha_min = alpha_min_;
+    alpha_smooth = alpha_smooth_;
+  }
+
 private:
   Equations eq;
   Mesh mesh;
   ElementCache element;
+
+  // for shock-capturing indicators
+  value_type alpha_max = 0.5;
+  value_type alpha_min = 0.001;
+  bool alpha_smooth = false;
 };
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -81,6 +98,21 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
     calc_volume_integral(Solution<Mesh, Basis, Equations> &sol) {
   std::size_t total_elements = mesh.get_nelem();
   VolumeFlux volume_integral{};
+  for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
+    volume_integral(ielem, eq, sol.u, sol.du);
+  }
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+    calc_volume_integral(Solution<Mesh, Basis, Equations> &sol)
+  requires std::derived_from<VolumeFlux, VolumeIntegralShockCapturingBase>
+{
+  std::size_t total_elements = mesh.get_nelem();
+  VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth,
+                             total_elements);
+  volume_integral.calc_alpha(total_elements, sol.u);
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
     volume_integral(ielem, eq, sol.u, sol.du);
   }

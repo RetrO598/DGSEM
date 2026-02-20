@@ -40,6 +40,9 @@ struct Mat {
   constexpr std::span<const T, M * N> span() const noexcept { return data; }
 
   constexpr Mat<T, N, M> transpose() const noexcept;
+
+  constexpr Mat<T, M, N> inverse() const
+    requires(M == N);
 };
 
 template <class T, std::size_t M, std::size_t N>
@@ -94,5 +97,52 @@ constexpr Mat<T, N, M> Mat<T, M, N>::transpose() const noexcept {
       trans(j, i) = (*this)(i, j);
     }
   return trans;
+}
+
+template <class T, std::size_t M, std::size_t N>
+constexpr Mat<T, M, N> Mat<T, M, N>::inverse() const
+  requires(M == N)
+{
+  Mat<T, M, N> A = *this;
+  Mat<T, M, N> inv{};
+  // 初始化为单位阵
+  for (std::size_t i = 0; i < M; ++i)
+    inv(i, i) = T{1};
+  for (std::size_t col = 0; col < N; ++col) {
+    // 选主元
+    std::size_t pivot = col;
+    T max_val = (A(col, col) < 0 ? -A(col, col) : A(col, col));
+    for (std::size_t row = col + 1; row < M; ++row) {
+      T v = (A(row, col) < 0 ? -A(row, col) : A(row, col));
+      if (v > max_val) {
+        max_val = v;
+        pivot = row;
+      }
+    }
+    // 行交换
+    if (pivot != col) {
+      for (std::size_t k = 0; k < N; ++k) {
+        std::swap(A(col, k), A(pivot, k));
+        std::swap(inv(col, k), inv(pivot, k));
+      }
+    }
+    // 主元归一化
+    T diag = A(col, col);
+    for (std::size_t k = 0; k < N; ++k) {
+      A(col, k) /= diag;
+      inv(col, k) /= diag;
+    }
+    // 消元
+    for (std::size_t row = 0; row < M; ++row) {
+      if (row == col)
+        continue;
+      T factor = A(row, col);
+      for (std::size_t k = 0; k < N; ++k) {
+        A(row, k) -= factor * A(col, k);
+        inv(row, k) -= factor * inv(col, k);
+      }
+    }
+  }
+  return inv;
 }
 } // namespace DGSEM

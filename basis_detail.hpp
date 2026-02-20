@@ -8,6 +8,7 @@
 #include <numeric>
 #include <span>
 #include <tuple>
+#include <utility>
 
 #include "container_fixed.hpp"
 
@@ -191,7 +192,7 @@ template <class T, std::size_t NNodes>
 Mat<T, NNodes, NNodes> calc_dsplit(std::span<const T, NNodes> nodes,
                                    std::span<const T, NNodes> weights) {
   Mat<T, NNodes, NNodes> dsplit{};
-  dsplit = 2.0 * polynomial_derivative_matrix(nodes);
+  dsplit = (T)2.0 * polynomial_derivative_matrix(nodes);
 
   dsplit(0, 0) += 1.0 / weights[0];
   dsplit(NNodes - 1, NNodes - 1) -= 1.0 / weights[NNodes - 1];
@@ -214,6 +215,52 @@ Mat<T, NNodes, NNodes> calc_dhat(std::span<const T, NNodes> nodes,
   return dhat;
 }
 
+template <class T>
+std::pair<T, T> legendre_polynomial_and_derivative(std::size_t n, T x) {
+  T poly = 0.0;
+  T deriv = 0.0;
+  if (n == 0) {
+    poly = 1.0;
+    deriv = 0.0;
+  } else if (n == 1) {
+    poly = x;
+    deriv = 1.0;
+  } else {
+    T Poly_Nm2 = 1.0;
+    T Poly_Nm1 = x;
+    T Deriv_Nm2 = 0.0;
+    T Deriv_Nm1 = 1.0;
+
+    for (std::size_t i = 2; i <= n; ++i) {
+      poly =
+          ((T)(2.0 * i - 1.0) * x * Poly_Nm1 - (T)(i - 1.0) * Poly_Nm2) / (T)i;
+      deriv = Deriv_Nm2 + (T)(2.0 * i - 1.0) * Poly_Nm1;
+      Poly_Nm2 = Poly_Nm1;
+      Poly_Nm1 = poly;
+      Deriv_Nm2 = Deriv_Nm1;
+      Deriv_Nm1 = deriv;
+    }
+  }
+
+  poly = poly * std::sqrt(n + 0.5);
+  deriv = deriv * std::sqrt(n + 0.5);
+
+  return {poly, deriv};
+}
+
+template <class T, std::size_t NNodes>
+Mat<T, NNodes, NNodes>
+inverse_vandermonde_legendre(std::span<const T, NNodes> nodes) {
+  Mat<T, NNodes, NNodes> inverse_vandermonde{};
+  Mat<T, NNodes, NNodes> vandermonde{};
+  for (std::size_t i = 0; i < NNodes; ++i) {
+    for (std::size_t j = 0; j < NNodes; ++j) {
+      vandermonde(i, j) = legendre_polynomial_and_derivative(j, nodes[i]).first;
+    }
+  }
+  inverse_vandermonde = vandermonde.inverse();
+  return inverse_vandermonde;
+}
 } // namespace GLL
 } // namespace detail
 } // namespace Basis
