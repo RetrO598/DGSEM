@@ -1,6 +1,6 @@
 #pragma once
 
-#include "equations.hpp"
+#include "../equations/equations.hpp"
 #include <array>
 #include <cstddef>
 #include <functional>

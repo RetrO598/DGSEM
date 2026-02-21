@@ -1,6 +1,6 @@
 #pragma once
-#include "boundary_condition.hpp"
 #include <array>
+#include <boundary_condition/boundary_condition.hpp>
 #include <cstddef>
 #include <functional>
 #include <numeric>

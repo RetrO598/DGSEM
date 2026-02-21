@@ -1,9 +1,10 @@
 #pragma once
-#include "equations.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <equations/equations.hpp>
 #include <vector>
 #include <xtensor/core/xtensor_forward.hpp>
 namespace DGSEM {

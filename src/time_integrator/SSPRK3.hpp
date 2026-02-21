@@ -1,18 +1,13 @@
 #pragma once
-
+#include "integrator_base.hpp"
 #include <xtensor/core/xtensor_forward.hpp>
 namespace DGSEM {
-template <class T, class Solver, class Solution>
-class TimeIntegrator {
-public:
-  virtual void step(Solver &solver, Solution &sol, T dt) = 0;
-};
 
 template <class T, class Solver, class Solution>
 class SSPRK3 : public TimeIntegrator<T, Solver, Solution> {
 public:
   explicit SSPRK3(const Solution &sol)
-      : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()){};
+      : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()) {};
 
   void step(Solver &solver, Solution &sol, T dt) override {
     solver.calc_rhs(sol);

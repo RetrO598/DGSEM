@@ -1,8 +1,8 @@
 #pragma once
 
-#include "data_container.hpp"
-#include "equations.hpp"
+#include "../containers/data_container.hpp"
 #include <cstddef>
+#include <equations/equations.hpp>
 #include <xtensor/core/xtensor_forward.hpp>
 namespace DGSEM {
 template <class Basis, class Equations, class Element>

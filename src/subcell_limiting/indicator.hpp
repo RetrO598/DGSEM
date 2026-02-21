@@ -1,10 +1,9 @@
 #pragma once
 
-#include "container_fixed.hpp"
-#include "equations.hpp"
+#include "../base/container_fixed.hpp"
 #include <array>
 #include <cstddef>
-#include <iostream>
+#include <equations/equations.hpp>
 #include <vector>
 #include <xtensor/core/xtensor_forward.hpp>
 namespace DGSEM {

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "equations.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdlib>
+#include <equations/equations.hpp>
 namespace DGSEM {
 template <class Equations>
 struct LaxFriedrichsFlux {};

@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <span>
 
-#include "basis_detail.hpp"
-#include "container_fixed.hpp"
+#include "../base/container_fixed.hpp"
+#include "../polynomial_basis/basis_detail.hpp"
 namespace DGSEM {
 namespace Basis {
 
