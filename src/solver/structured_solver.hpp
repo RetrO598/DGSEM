@@ -1,15 +1,12 @@
 #pragma once
-#include "../boundary_condition/boundary_condition.hpp"
-#include "../containers/data_container.hpp"
-#include "../equations/equations.hpp"
-#include "../space_integral/jacobian.hpp"
-#include "../space_integral/surface_flux.hpp"
-#include "../space_integral/surface_integral.hpp"
-#include "../space_integral/volume_flux.hpp"
 #include <array>
+#include <boundary_condition/boundary_condition.hpp>
 #include <cmath>
 #include <concepts>
+#include <containers/containers.hpp>
 #include <cstddef>
+#include <equations/equations.hpp>
+#include <space_integral/space_integral.hpp>
 
 namespace DGSEM {
 
@@ -148,11 +145,12 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
     auto bc1 = mesh.get_boundary(i);
     auto bc2 = mesh.get_boundary(i + NDIMS);
 
-    BoundaryDispatcher<Basis, Equations, NDIMS>::apply(
-        bc1, mesh.get_num_cells(), i, sol.u, sol.surface_flux_value);
+    BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
+        eq, bc1, mesh.get_num_cells(), i, sol.u, sol.surface_flux_value);
 
-    BoundaryDispatcher<Basis, Equations, NDIMS>::apply(
-        bc2, mesh.get_num_cells(), i + NDIMS, sol.u, sol.surface_flux_value);
+    BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
+        eq, bc2, mesh.get_num_cells(), i + NDIMS, sol.u,
+        sol.surface_flux_value);
   }
 }
 
@@ -173,8 +171,8 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux,
   sol.du.fill(0.0); // Clear the residual before accumulation
   calc_volume_integral(sol);
   calc_interface_flux(sol);
-  calc_surface_integral(sol);
   apply_boundary_condition(sol);
+  calc_surface_integral(sol);
   apply_jacobian(sol);
 }
 

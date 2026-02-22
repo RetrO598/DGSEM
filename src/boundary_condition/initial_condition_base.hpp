@@ -1,10 +1,11 @@
 #pragma once
 
-#include "../equations/equations.hpp"
+#include "equations/buckley_leverett1D.hpp"
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <equations/equations.hpp>
 #include <iostream>
 #include <numbers>
 
@@ -121,6 +122,32 @@ public:
       value = 1.0 - std::abs(10.0 * (x - 0.1));
     } else if (x > 0.4 && x < 0.6) {
       value = std::sqrt(1.0 - 100.0 * (x - 0.5) * (x - 0.5));
+    } else {
+      value = 0.0;
+    }
+    return {value};
+  }
+};
+
+template <class T>
+class BuckleyLeverettInitial
+    : public AbstractInitial<BuckleyLeverettInitial<T>,
+                             equations::BuckleyLeverett1D<T>> {
+public:
+  using Eq = equations::BuckleyLeverett1D<T>;
+  using Base = AbstractInitial<BuckleyLeverettInitial<T>,
+                               equations::BuckleyLeverett1D<T>>;
+  using value_type = T;
+  inline constexpr static std::size_t NDIMS = Eq::NDIMS;
+  inline constexpr static std::size_t NVARS = Eq::NVARS;
+
+  BuckleyLeverettInitial() = default;
+
+  std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
+    T x = coordinate[0];
+    T value = 0.0;
+    if (x > -0.5 && x < 0.0) {
+      value = 1.0;
     } else {
       value = 0.0;
     }

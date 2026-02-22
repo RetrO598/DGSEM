@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../equations/equations.hpp"
 #include <array>
 #include <cstddef>
+#include <equations/equations.hpp>
 #include <functional>
 #include <numeric>
 #include <xtensor.hpp>

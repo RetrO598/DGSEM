@@ -2,11 +2,11 @@
 
 #include <array>
 #include <cstddef>
+#include <equations/equations_base.hpp>
 namespace DGSEM {
 namespace equations {
-
 template <class T>
-class LinearScalarAdvection1D {
+class LinearScalarAdvection1D : public Equations1DBase {
 
 public:
   using value_type = T;
@@ -28,11 +28,5 @@ private:
   T speed{1.0};
 };
 
-template <class Equations>
-struct EquationTraits {
-  using value_type = typename Equations::value_type;
-  constexpr static std::size_t NDIMS = Equations::NDIMS;
-  constexpr static std::size_t NVARS = Equations::NVARS;
-};
 } // namespace equations
 } // namespace DGSEM
