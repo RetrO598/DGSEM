@@ -1,6 +1,7 @@
 #pragma once
 
 #include "equations/buckley_leverett1D.hpp"
+#include "equations/inviscid_burgers1D.hpp"
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -69,6 +70,27 @@ public:
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T value = 1.0 + 0.5 * std::sin(std::numbers::pi * x);
+    return {value};
+  }
+};
+
+template <class T>
+class BurgersSinwaveInitial
+    : public AbstractInitial<BurgersSinwaveInitial<T>,
+                             equations::InviscidBurgers1D<T>> {
+public:
+  using Eq = equations::InviscidBurgers1D<T>;
+  using Base = AbstractInitial<BurgersSinwaveInitial<T>,
+                               equations::InviscidBurgers1D<T>>;
+  using value_type = T;
+  inline constexpr static std::size_t NDIMS = Eq::NDIMS;
+  inline constexpr static std::size_t NVARS = Eq::NVARS;
+
+  BurgersSinwaveInitial() = default;
+
+  std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
+    T x = coordinate[0];
+    T value = std::sin(2.0 * std::numbers::pi * x);
     return {value};
   }
 };

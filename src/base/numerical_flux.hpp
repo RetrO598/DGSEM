@@ -1,6 +1,7 @@
 #pragma once
 
 #include "equations/buckley_leverett1D.hpp"
+#include "equations/inviscid_burgers1D.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdlib>
@@ -49,6 +50,30 @@ struct LaxFriedrichsFlux<equations::BuckleyLeverett1D<T>> {
                  const std::array<value_type, NVARS> &uR) {
     auto speed = eq.get_wave_speed();
     auto max_speed = std::abs(speed);
+    std::array<T, NVARS> flux_L = eq.flux(uL, 0);
+    std::array<T, NVARS> flux_R = eq.flux(uR, 0);
+    std::array<value_type, NVARS> flux{};
+    for (std::size_t i = 0; i < NVARS; ++i) {
+      flux[i] =
+          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+    }
+    return flux;
+  }
+};
+
+template <class T>
+struct LaxFriedrichsFlux<equations::InviscidBurgers1D<T>> {
+  using traits = equations::EquationTraits<equations::InviscidBurgers1D<T>>;
+  using value_type = typename traits::value_type;
+
+  constexpr static std::size_t NDIMS = traits::NDIMS;
+  constexpr static std::size_t NVARS = traits::NVARS;
+
+  inline constexpr static std::array<value_type, NVARS>
+  numerical_flux(const equations::InviscidBurgers1D<T> &eq,
+                 const std::array<value_type, NVARS> &uL,
+                 const std::array<value_type, NVARS> &uR) {
+    auto max_speed = eq.get_wave_speed(uL, uR);
     std::array<T, NVARS> flux_L = eq.flux(uL, 0);
     std::array<T, NVARS> flux_R = eq.flux(uR, 0);
     std::array<value_type, NVARS> flux{};

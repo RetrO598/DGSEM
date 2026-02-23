@@ -1,6 +1,6 @@
 #include "base/numerical_flux.hpp"
 #include "boundary_condition/initial_condition_base.hpp"
-#include "equations/buckley_leverett1D.hpp"
+#include "equations/inviscid_burgers1D.hpp"
 #include "space_integral/volume_flux.hpp"
 #include <array>
 #include <cstddef>
@@ -12,7 +12,7 @@
 
 int main() {
 
-  using Eq = DGSEM::equations::BuckleyLeverett1D<double>;
+  using Eq = DGSEM::equations::InviscidBurgers1D<double>;
   using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 4>;
 
   using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
@@ -30,8 +30,8 @@ int main() {
       DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh>;
   using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-  std::array<double, 2> domain_mesh = {-1.0, 1.0};
-  std::array<std::size_t, 1> n_cells = {160};
+  std::array<double, 2> domain_mesh = {0.0, 1.0};
+  std::array<std::size_t, 1> n_cells = {64};
   std::array<DGSEM::BoundaryCondition, 2> bcs = {
       DGSEM::BoundaryCondition::Extrapolate,
       DGSEM::BoundaryCondition::Extrapolate};
@@ -52,7 +52,7 @@ int main() {
 
   DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
 
-  DGSEM::BuckleyLeverettInitial<double> initial{};
+  DGSEM::BurgersSinwaveInitial<double> initial{};
 
   std::cout << "Testing solver.initialize()..." << std::endl;
   solver.initialize(initial, sol);
@@ -60,10 +60,10 @@ int main() {
 
   using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
   TimeIntegrator time_integrator(sol);
-  const double t_final = 0.4;
-  const double cfl = 0.02;
+  const double t_final = 2.0;
+  const double cfl = 0.1;
   const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
-  const double dt = cfl * dx / eq.get_wave_speed();
+  const double dt = cfl * dx / 1.0;
   double t = 0.0;
   int iter = 0;
 
