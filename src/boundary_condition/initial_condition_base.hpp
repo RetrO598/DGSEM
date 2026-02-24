@@ -176,4 +176,36 @@ public:
     return {value};
   }
 };
+
+template <class T>
+class ShuOsherInitial
+    : public AbstractInitial<ShuOsherInitial<T>,
+                             equations::CompressibleEuler1D<T>> {
+public:
+  using Eq = equations::CompressibleEuler1D<T>;
+  using Base =
+      AbstractInitial<ShuOsherInitial<T>, equations::CompressibleEuler1D<T>>;
+  using value_type = T;
+  inline constexpr static std::size_t NDIMS = Eq::NDIMS;
+  inline constexpr static std::size_t NVARS = Eq::NVARS;
+
+  ShuOsherInitial() = default;
+
+  std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
+    T x = coordinate[0];
+    T rho = 0.0;
+    T v = 0.0;
+    T p = 0.0;
+    if (x < -4.0) {
+      rho = 3.857;
+      v = 2.629;
+      p = 10.333;
+    } else if (x >= -4.0) {
+      rho = 1.0 + 0.2 * std::sin(5.0 * x);
+      v = 0.0;
+      p = 1.0;
+    }
+    return {rho, rho * v, rho * 0.5 * v * v + p / (1.4 - 1.0)};
+  }
+};
 } // namespace DGSEM
