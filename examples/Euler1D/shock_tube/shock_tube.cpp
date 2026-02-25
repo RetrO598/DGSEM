@@ -26,8 +26,8 @@ int main() {
       DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh>;
   using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-  std::array<double, 2> domain_mesh = {-5.0, 5.0};
-  std::array<std::size_t, 1> n_cells = {256};
+  std::array<double, 2> domain_mesh = {0.0, 1.0};
+  std::array<std::size_t, 1> n_cells = {50};
   std::array<DGSEM::BoundaryCondition, 2> bcs = {
       DGSEM::BoundaryCondition::Extrapolate,
       DGSEM::BoundaryCondition::Extrapolate};
@@ -48,7 +48,7 @@ int main() {
 
   DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
 
-  DGSEM::ShuOsherInitial<double> initial{};
+  DGSEM::SodShockTubeInitial<double> initial{};
 
   std::cout << "Testing solver.initialize()..." << std::endl;
   solver.initialize(initial, sol);
@@ -56,10 +56,10 @@ int main() {
 
   using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
   TimeIntegrator time_integrator(sol);
-  const double t_final = 1.8;
+  const double t_final = 0.2;
   const double cfl = 0.05;
   const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
-  const double dt = cfl * dx / 4.566;
+  const double dt = cfl * dx / 1.0;
   double t = 0.0;
   int iter = 0;
 

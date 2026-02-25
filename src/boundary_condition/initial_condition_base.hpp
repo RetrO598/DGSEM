@@ -208,4 +208,37 @@ public:
     return {rho, rho * v, rho * 0.5 * v * v + p / (1.4 - 1.0)};
   }
 };
+// Sod Shock Tube Initial Condition for 1D Euler
+template <class T>
+class SodShockTubeInitial
+    : public AbstractInitial<SodShockTubeInitial<T>,
+                             equations::CompressibleEuler1D<T>> {
+public:
+  using Eq = equations::CompressibleEuler1D<T>;
+  using Base = AbstractInitial<SodShockTubeInitial<T>,
+                               equations::CompressibleEuler1D<T>>;
+  using value_type = T;
+  inline constexpr static std::size_t NDIMS = Eq::NDIMS;
+  inline constexpr static std::size_t NVARS = Eq::NVARS;
+
+  SodShockTubeInitial() = default;
+
+  std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
+    T x = coordinate[0];
+    T rho, u, p;
+    if (x < 0.5) {
+      rho = 1.0;
+      u = 0.0;
+      p = 1.0;
+    } else {
+      rho = 0.125;
+      u = 0.0;
+      p = 0.1;
+    }
+    T mom = rho * u;
+    T gamma = 1.4;
+    T rhoE = p / (gamma - 1.0) + 0.5 * rho * u * u;
+    return {rho, mom, rhoE};
+  }
+};
 } // namespace DGSEM
