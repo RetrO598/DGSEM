@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../base/container_fixed.hpp"
+#include "equations/compressible_euler1D.hpp"
 #include "equations/equations_base.hpp"
 #include <array>
 #include <cstddef>
@@ -38,6 +39,24 @@ struct IndicatorValueAccessor {
                                                std::size_t ielem,
                                                std::size_t inode) {
     return u(ielem, inode, 0);
+  }
+};
+
+template <class T>
+struct IndicatorValueAccessor<equations::CompressibleEuler1D<T>> {
+  using traits = equations::EquationTraits<equations::CompressibleEuler1D<T>>;
+  using value_type = typename traits::value_type;
+
+  inline static value_type get_indicator_value(const xt::xarray<value_type> &u,
+                                               std::size_t ielem,
+                                               std::size_t inode) {
+    value_type rho = u(ielem, inode, 0);
+    value_type mom = u(ielem, inode, 1);
+    value_type rhoE = u(ielem, inode, 2);
+    value_type u_vel = mom / rho;
+    value_type gamma = 1.4;
+    value_type p = (gamma - 1.0) * (rhoE - 0.5 * rho * u_vel * u_vel);
+    return p * rho;
   }
 };
 

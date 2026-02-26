@@ -13,7 +13,7 @@
 int main() {
 
   using Eq = DGSEM::equations::CompressibleEuler1D<double>;
-  using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 3>;
+  using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 4>;
 
   using SurfaceFlux = DGSEM::HLLCFlux<Eq>;
 

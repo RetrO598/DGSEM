@@ -12,6 +12,7 @@ enum class BoundaryCondition {
   Inflow,
   Outflow,
   Extrapolate,
+  Dirichlet,
   Custom,
 };
 

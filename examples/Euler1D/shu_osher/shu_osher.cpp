@@ -13,12 +13,12 @@
 int main() {
 
   using Eq = DGSEM::equations::CompressibleEuler1D<double>;
-  using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 3>;
+  using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 4>;
 
-  using SurfaceFlux = DGSEM::HLLCFlux<Eq>;
+  using SurfaceFlux = DGSEM::ChandrashekarESFlux<Eq>;
 
   using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
-      MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::HLLCFlux,
+      MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::ChandrashekarESFlux,
       DGSEM::HGIndicator<MyBasis, Eq>>;
 
   using Mesh = DGSEM::StructuredMesh<double, 1>;

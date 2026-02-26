@@ -27,8 +27,8 @@ public:
     return {mom, mom * u_vel + p, u_vel * (rhoE + p)};
   }
 
-  value_type get_wave_speed(const std::array<value_type, NVARS> u_ll,
-                            const std::array<value_type, NVARS> u_rr) const {
+  value_type get_wave_speed(const std::array<value_type, NVARS> &u_ll,
+                            const std::array<value_type, NVARS> &u_rr) const {
     value_type rho_ll = u_ll[0];
     value_type mom_ll = u_ll[1];
     value_type rhoE_ll = u_ll[2];

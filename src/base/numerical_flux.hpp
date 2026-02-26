@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <equations/equations.hpp>
+
 namespace DGSEM {
 template <class Equations>
 struct LaxFriedrichsFlux {};
@@ -85,6 +86,31 @@ struct LaxFriedrichsFlux<equations::InviscidBurgers1D<T>> {
       flux[i] =
           0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
     }
+    return flux;
+  }
+};
+
+template <class T>
+struct LaxFriedrichsFlux<equations::CompressibleEuler1D<T>> {
+  using traits = equations::EquationTraits<equations::CompressibleEuler1D<T>>;
+  using value_type = typename traits::value_type;
+
+  constexpr static std::size_t NDIMS = traits::NDIMS;
+  constexpr static std::size_t NVARS = traits::NVARS;
+
+  inline constexpr static std::array<value_type, NVARS>
+  numerical_flux(const equations::CompressibleEuler1D<T> &eq,
+                 const std::array<value_type, NVARS> &uL,
+                 const std::array<value_type, NVARS> &uR) {
+    auto max_speed = eq.get_wave_speed(uL, uR);
+    std::array<T, NVARS> flux_L = eq.flux(uL, 0);
+    std::array<T, NVARS> flux_R = eq.flux(uR, 0);
+    std::array<value_type, NVARS> flux{};
+    for (std::size_t i = 0; i < NVARS; ++i) {
+      flux[i] =
+          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+    }
+
     return flux;
   }
 };
@@ -275,6 +301,71 @@ struct ChandrashekarFlux<equations::CompressibleEuler1D<T>> {
     T f2 = f1 * v1_avg + p_mean;
     T f3 = f1 * 0.5 * (1.0 / (gamma - 1.0) / beta_mean - velocity_square_avg) +
            f2 * v1_avg;
+    return {f1, f2, f3};
+  }
+};
+
+template <class Equations>
+struct ChandrashekarESFlux;
+
+template <class T>
+struct ChandrashekarESFlux<equations::CompressibleEuler1D<T>> {
+  using traits = equations::EquationTraits<equations::CompressibleEuler1D<T>>;
+  constexpr static std::size_t NDIMS = traits::NDIMS;
+  constexpr static std::size_t NVARS = traits::NVARS;
+
+  inline constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::CompressibleEuler1D<T> &eq,
+                 const std::array<T, NVARS> &u_ll,
+                 const std::array<T, NVARS> &u_rr) {
+    T rho_ll = u_ll[0];
+    T mom_ll = u_ll[1];
+    T rhoE_ll = u_ll[2];
+    T rho_rr = u_rr[0];
+    T mom_rr = u_rr[1];
+    T rhoE_rr = u_rr[2];
+    T v1_ll = mom_ll / rho_ll;
+    T v1_rr = mom_rr / rho_rr;
+
+    T E_ll = rhoE_ll / rho_ll;
+    T E_rr = rhoE_rr / rho_rr;
+
+    T gamma = eq.get_gamma();
+
+    T p_ll = (gamma - 1.0) * (rhoE_ll - 0.5 * rho_ll * v1_ll * v1_ll);
+    T p_rr = (gamma - 1.0) * (rhoE_rr - 0.5 * rho_rr * v1_rr * v1_rr);
+
+    T beta_ll = 0.5 * rho_ll / p_ll;
+    T beta_rr = 0.5 * rho_rr / p_rr;
+    T specific_kin_ll = 0.5 * v1_ll * v1_ll;
+    T specific_kin_rr = 0.5 * v1_rr * v1_rr;
+
+    T rho_avg = 0.5 * (rho_ll + rho_rr);
+    T rho_mean = ln_mean(rho_ll, rho_rr);
+    T beta_mean = ln_mean(beta_ll, beta_rr);
+    T beta_avg = 0.5 * (beta_ll + beta_rr);
+    T v1_avg = 0.5 * (v1_ll + v1_rr);
+    T p_mean = 0.5 * rho_avg / beta_avg;
+    T velocity_square_avg = specific_kin_ll + specific_kin_rr;
+
+    T f1 = rho_mean * v1_avg;
+    T f2 = f1 * v1_avg + p_mean;
+    T f3 = f1 * 0.5 * (1.0 / (gamma - 1.0) / beta_mean - velocity_square_avg) +
+           f2 * v1_avg;
+
+    auto max_speed = eq.get_wave_speed(u_ll, u_rr);
+    // T max_speed = std::abs(v1_avg) + std::sqrt(gamma / (2.0 * beta_mean));
+
+    f1 = f1 - 0.5 * max_speed * (rho_rr - rho_ll);
+    f2 = f2 - 0.5 * max_speed * (mom_rr - mom_ll);
+    f3 =
+        f3 -
+        0.5 * max_speed *
+            ((0.5 * (1.0 / (gamma - 1.0) / beta_mean) + 0.5 * v1_ll * v1_rr) *
+                 (rho_rr - rho_ll) +
+             rho_avg * v1_avg * (v1_rr - v1_ll) +
+             rho_avg / (2.0 * (gamma - 1.0)) * (1.0 / beta_rr - 1.0 / beta_ll));
+
     return {f1, f2, f3};
   }
 };
