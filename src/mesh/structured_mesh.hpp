@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <functional>
 #include <numeric>
+#include <stdexcept>
 namespace DGSEM {
 template <class T, std::size_t NDIM>
 class StructuredMesh {
@@ -29,6 +30,15 @@ public:
   std::size_t get_num_cells(std::size_t i) const { return n_cells[i]; }
 
   std::size_t get_nelem() const { return nelem; }
+
+  T get_face_coord(std::size_t face_id) const {
+    if (face_id == 0) {
+      return domain[0];
+    } else if (face_id == 1) {
+      return domain[1];
+    }
+    throw std::runtime_error("invalid face id.");
+  }
 
 private:
   std::size_t num_boundarys;

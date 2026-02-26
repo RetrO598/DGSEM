@@ -11,7 +11,7 @@
 namespace DGSEM {
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
+          class Mesh, class BoundarySetType>
 class StructuredSolver {
 public:
   using traits = equations::EquationTraits<Equations>;
@@ -23,8 +23,9 @@ public:
 
   StructuredSolver() = delete;
   StructuredSolver(const Equations &eq_, const Mesh &mesh_,
-                   const ElementCache &element_)
-      : eq(eq_), mesh(mesh_), element(element_) {}
+                   const ElementCache &element_,
+                   const BoundarySetType &boundary_set_)
+      : eq(eq_), mesh(mesh_), element(element_), boundary_set(boundary_set_) {}
 
   template <class Derived>
   void initialize(const AbstractInitial<Derived, Equations> &initial_condition,
@@ -53,6 +54,7 @@ public:
   }
 
 private:
+  BoundarySetType boundary_set;
   Equations eq;
   Mesh mesh;
   ElementCache element;
@@ -64,9 +66,10 @@ private:
 };
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
+          class Mesh, class BoundarySetType>
 template <class Derived>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::
     initialize(const AbstractInitial<Derived, Equations> &initial_condition,
                Solution<Mesh, Basis, Equations> &sol) {
 
@@ -89,8 +92,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::
     calc_volume_integral(Solution<Mesh, Basis, Equations> &sol) {
   std::size_t total_elements = mesh.get_nelem();
   VolumeFlux volume_integral{};
@@ -100,8 +104,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::
     calc_volume_integral(Solution<Mesh, Basis, Equations> &sol)
   requires std::derived_from<VolumeFlux, VolumeIntegralShockCapturingBase>
 {
@@ -115,8 +120,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::
     calc_interface_flux(Solution<Mesh, Basis, Equations> &sol) {
   std::size_t total_elements = mesh.get_nelem();
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
@@ -127,8 +133,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::
     calc_surface_integral(Solution<Mesh, Basis, Equations> &sol) {
   std::size_t total_elements = mesh.get_nelem();
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
@@ -138,26 +145,37 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::
     apply_boundary_condition(Solution<Mesh, Basis, Equations> &sol) {
+
   for (std::size_t i = 0; i < NDIMS; ++i) {
-    auto bc1 = mesh.get_boundary(i);
-    auto bc2 = mesh.get_boundary(i + NDIMS);
+    // auto bc1 = mesh.get_boundary(i);
+    // auto bc2 = mesh.get_boundary(i + NDIMS);
 
-    BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
-        eq, bc1, mesh.get_num_cells(), i, sol.u, sol.surface_flux_value);
+    // BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
+    //     eq, bc1, mesh.get_num_cells(), i, sol.u, sol.surface_flux_value);
 
-    BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
-        eq, bc2, mesh.get_num_cells(), i + NDIMS, sol.u,
-        sol.surface_flux_value);
+    // BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
+    //     eq, bc2, mesh.get_num_cells(), i + NDIMS, sol.u,
+    //     sol.surface_flux_value);
+
+    boundary_set
+        .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
+            mesh, Basis::NNodes, eq, sol.u, sol.surface_flux_value, i, 0.0);
+
+    boundary_set
+        .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
+            mesh, Basis::NNodes, eq, sol.u, sol.surface_flux_value, i + 1, 0.0);
   }
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
-    apply_jacobian(Solution<Mesh, Basis, Equations> &sol) {
+          class Mesh, class BoundarySetType>
+void StructuredSolver<
+    Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+    BoundarySetType>::apply_jacobian(Solution<Mesh, Basis, Equations> &sol) {
   std::size_t total_elements = mesh.get_nelem();
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
     JacobianProj<Basis, Equations, ElementCache>::apply(element, ielem, sol.du);
@@ -165,9 +183,10 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh>::
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
-          class Mesh>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux,
-                      Mesh>::calc_rhs(Solution<Mesh, Basis, Equations> &sol) {
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_rhs(Solution<Mesh, Basis,
+                                                          Equations> &sol) {
   sol.du.fill(0.0); // Clear the residual before accumulation
   calc_volume_integral(sol);
   calc_interface_flux(sol);

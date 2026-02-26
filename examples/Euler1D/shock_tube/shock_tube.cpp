@@ -21,9 +21,29 @@ int main() {
       MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::HLLCFlux,
       DGSEM::HGIndicator<MyBasis, Eq>>;
 
+  auto dirichFunc = [](const std::array<double, 1> &coordinate, double time) {
+    double x = coordinate[0];
+    double rho, u, p;
+    if (x < 0.5) {
+      rho = 1.0;
+      u = 0.0;
+      p = 1.0;
+    } else {
+      rho = 0.125;
+      u = 0.0;
+      p = 0.1;
+    }
+    double mom = rho * u;
+    double gamma = 1.4;
+    double rhoE = p / (gamma - 1.0) + 0.5 * rho * u * u;
+    return std::array<double, 3>{rho, mom, rhoE};
+  };
+
+  auto boundaries = DGSEM::BoundarySet(DGSEM::DirichletBC(dirichFunc),
+                                       DGSEM::DirichletBC(dirichFunc));
   using Mesh = DGSEM::StructuredMesh<double, 1>;
-  using Solver =
-      DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh>;
+  using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                         Mesh, decltype(boundaries)>;
   using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
   std::array<double, 2> domain_mesh = {0.0, 1.0};
@@ -43,8 +63,7 @@ int main() {
 
   initializer.init_elements(n_cells, container);
 
-  DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh> solver(
-      eq, mesh, container);
+  Solver solver(eq, mesh, container, boundaries);
 
   DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
 
@@ -57,7 +76,7 @@ int main() {
   using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
   TimeIntegrator time_integrator(sol);
   const double t_final = 0.2;
-  const double cfl = 0.05;
+  const double cfl = 0.01;
   const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
   const double dt = cfl * dx / 1.0;
   double t = 0.0;

@@ -52,6 +52,13 @@ struct BoundaryImpl<Basis, Equations, SurfaceFlux, NDIMS,
 };
 
 template <class Basis, class Equations, class SurfaceFlux, std::size_t NDIMS>
+struct BoundaryImpl<Basis, Equations, SurfaceFlux, NDIMS,
+                    BoundaryCondition::Dirichlet> {
+  using traits = equations::EquationTraits<Equations>;
+  using value_type = typename traits::value_type;
+};
+
+template <class Basis, class Equations, class SurfaceFlux, std::size_t NDIMS>
 struct BoundaryDispatcher {
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename traits::value_type;
@@ -60,8 +67,39 @@ struct BoundaryDispatcher {
   apply(const Equations &eq, BoundaryCondition bc,
         const std::array<std::size_t, NDIMS> &n_cells, std::size_t iboundary,
         const xt::xarray<value_type> &u, xt::xarray<value_type> &surface_flux) {
-
     switch (bc) {
+    case BoundaryCondition::Periodic:
+      BoundaryImpl<Basis, Equations, SurfaceFlux, NDIMS,
+                   BoundaryCondition::Periodic>::apply(n_cells, iboundary, u,
+                                                       surface_flux);
+      break;
+    case BoundaryCondition::Extrapolate:
+      BoundaryImpl<Basis, Equations, SurfaceFlux, NDIMS,
+                   BoundaryCondition::Extrapolate>::apply(eq, n_cells,
+                                                          iboundary, u,
+                                                          surface_flux);
+      break;
+    default:
+      throw std::runtime_error("Unsupported BC");
+    }
+  }
+
+  // 新增：支持Dirichlet外部函数注入
+  template <typename Func>
+  inline constexpr static void
+  apply(const Equations &eq, BoundaryCondition bc,
+        const std::array<std::size_t, NDIMS> &n_cells, std::size_t iboundary,
+        const xt::xarray<value_type> &u, xt::xarray<value_type> &surface_flux,
+        Func &&boundary_func, double t) {
+    switch (bc) {
+    case BoundaryCondition::Dirichlet:
+      BoundaryImpl<Basis, Equations, SurfaceFlux, NDIMS,
+                   BoundaryCondition::Dirichlet>::apply(eq, n_cells, iboundary,
+                                                        u, surface_flux,
+                                                        std::forward<Func>(
+                                                            boundary_func),
+                                                        t);
+      break;
     case BoundaryCondition::Periodic:
       BoundaryImpl<Basis, Equations, SurfaceFlux, NDIMS,
                    BoundaryCondition::Periodic>::apply(n_cells, iboundary, u,

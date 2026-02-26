@@ -1,3 +1,4 @@
+#include "boundary_condition/bc_new.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdio>
@@ -12,17 +13,18 @@ int main() {
   using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 3>;
 
   using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
-  // using VolumeFlux =
-  //     DGSEM::VolumeIntegralSplitForm<MyBasis, Eq, DGSEM::CentralFlux>;
 
   using VolumeFlux =
       DGSEM::VolumeIntegralShockCapturingHG<MyBasis, Eq, DGSEM::CentralFlux,
                                             DGSEM::LaxFriedrichsFlux,
                                             DGSEM::HGIndicator<MyBasis, Eq>>;
 
+  auto boundaries =
+      DGSEM::BoundarySet(DGSEM::PeriodicBC(), DGSEM::PeriodicBC());
+
   using Mesh = DGSEM::StructuredMesh<double, 1>;
-  using Solver =
-      DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh>;
+  using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                         Mesh, decltype(boundaries)>;
   using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
   std::array<double, 2> domain_mesh = {-1.0, 1.0};
@@ -41,21 +43,15 @@ int main() {
 
   initializer.init_elements(n_cells, container);
 
-  DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh> solver(
-      eq, mesh, container);
+  Solver solver(eq, mesh, container, boundaries);
 
   DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
-
-  // DGSEM::SinwaveInitial<double> initial{};
-
-  // DGSEM::GaussianInitial<double> initial{};
 
   DGSEM::CompositeWaveInitial<double> initial{};
 
   std::cout << "Testing solver.initialize()..." << std::endl;
   solver.initialize(initial, sol);
   std::cout << "solver.initialize() returned successfully." << std::endl;
-  // solver.calc_rhs(sol);
   using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
   TimeIntegrator time_integrator(sol);
   const double t_final = 4.0;
@@ -81,8 +77,6 @@ int main() {
                 << std::setprecision(4) << t << std::endl;
     }
   }
-  // solver.calc_rhs(sol);
-
   std::ofstream solution_file("solution.txt", std::ios::out);
   std::ofstream nodes_file("nodes.txt", std::ios::out);
 

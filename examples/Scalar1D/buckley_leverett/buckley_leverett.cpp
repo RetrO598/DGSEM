@@ -22,12 +22,23 @@ int main() {
                                             DGSEM::LaxFriedrichsFlux,
                                             DGSEM::HGIndicator<MyBasis, Eq>>;
 
-  // using VolumeFlux =
-  //     DGSEM::VolumeIntegralSplitForm<MyBasis, Eq, DGSEM::CentralFlux>;
+  auto dirichFunc = [](const std::array<double, 1> &coordinate, double time) {
+    double x = coordinate[0];
+    double u = 0.0;
+    if (x > -0.5 && x < 0.0) {
+      u = 1.0;
+    } else {
+      u = 0.0;
+    }
+    return std::array<double, 1>{u};
+  };
+
+  auto boundaries = DGSEM::BoundarySet(DGSEM::DirichletBC(dirichFunc),
+                                       DGSEM::DirichletBC(dirichFunc));
 
   using Mesh = DGSEM::StructuredMesh<double, 1>;
-  using Solver =
-      DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh>;
+  using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                         Mesh, decltype(boundaries)>;
   using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
   std::array<double, 2> domain_mesh = {-1.0, 1.0};
@@ -47,8 +58,7 @@ int main() {
 
   initializer.init_elements(n_cells, container);
 
-  DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh> solver(
-      eq, mesh, container);
+  Solver solver(eq, mesh, container, boundaries);
 
   DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
 

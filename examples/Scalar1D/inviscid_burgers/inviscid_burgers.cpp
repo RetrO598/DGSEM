@@ -3,12 +3,14 @@
 #include "equations/inviscid_burgers1D.hpp"
 #include "space_integral/volume_flux.hpp"
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <dgsem.hpp>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <numbers>
 
 int main() {
 
@@ -22,12 +24,19 @@ int main() {
                                             DGSEM::LaxFriedrichsFlux,
                                             DGSEM::HGIndicator<MyBasis, Eq>>;
 
-  // using VolumeFlux =
-  //     DGSEM::VolumeIntegralSplitForm<MyBasis, Eq, DGSEM::CentralFlux>;
+  auto dirichFunc = [](const std::array<double, 1> &coordinate, double time) {
+    double x = coordinate[0];
+    double u = 0.0;
+    u = std::sin(2.0 * std::numbers::pi * x);
+    return std::array<double, 1>{u};
+  };
+
+  auto boundaries = DGSEM::BoundarySet(DGSEM::DirichletBC(dirichFunc),
+                                       DGSEM::DirichletBC(dirichFunc));
 
   using Mesh = DGSEM::StructuredMesh<double, 1>;
-  using Solver =
-      DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh>;
+  using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                         Mesh, decltype(boundaries)>;
   using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
   std::array<double, 2> domain_mesh = {0.0, 1.0};
@@ -47,8 +56,7 @@ int main() {
 
   initializer.init_elements(n_cells, container);
 
-  DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux, Mesh> solver(
-      eq, mesh, container);
+  Solver solver(eq, mesh, container, boundaries);
 
   DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
 
