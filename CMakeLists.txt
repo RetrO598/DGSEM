@@ -10,7 +10,13 @@ set(CMAKE_EXTENSIONS OFF)
 
 project(DGSEM LANGUAGES CXX)
 
+find_package(Kokkos REQUIRED)
+
+find_package(OpenMP REQUIRED)
+
 add_library(dgsem INTERFACE)
 target_include_directories(dgsem INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(dgsem INTERFACE Kokkos::kokkos OpenMP::OpenMP_CXX)
+
 
 add_subdirectory(examples)

@@ -16,7 +16,7 @@ struct JacobianProj<Basis, Equations, StructuredElementContainer<T, 1>> {
   apply(const StructuredElementContainer<T, 1> &element, std::size_t ielem,
         xt::xarray<T> &du) {
     for (std::size_t i = 0; i < Basis::NNodes; ++i) {
-      T factor = -element.inverse_jacobian(ielem, i);
+      T factor = -element.inverse_jacobian(ielem, i, 0);
       for (std::size_t var = 0; var < NVARS; ++var) {
         du(ielem, i, var) *= factor;
       }

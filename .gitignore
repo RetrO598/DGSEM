@@ -3,3 +3,4 @@
 *.out
 *.py
 /build
+/.cache

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "base/global_def.hpp"
+#include "utils/kokkos_helper.hpp"
 #include <array>
 #include <cstddef>
 #include <equations/equations.hpp>
@@ -8,21 +10,48 @@
 #include <xtensor.hpp>
 #include <xtensor/core/xtensor_forward.hpp>
 namespace DGSEM {
-template <class T, std::size_t NDIM>
+template <class T, std::size_t NDIMS>
 struct StructuredElementContainer {
   using ndarray = xt::xarray<T>;
   using index_array = xt::xarray<std::size_t>;
 
-  std::array<std::size_t, NDIM> nelements;
+  using DataArray = solution_type_traits<T, NDIMS>::DataArray;
+  using DataArrayHost = solution_type_traits<T, NDIMS>::DataArrayHost;
+  using IndexArray = index_type_traits<NDIMS>::IndexArray;
+  using Matrix = jacobian_type_traits<T, NDIMS>::JacobianMatrix;
+
+  std::array<std::size_t, NDIMS> nelements;
   ndarray node_coordinates;
   index_array left_neighbors;
   ndarray jacobian_matrix;
   ndarray contravariant_vectors;
   ndarray inverse_jacobian;
+
+  DataArray node_coordinates_kokkos;
+  IndexArray left_neighbors_kokkos;
+  Matrix jacobian_matrix_kokkos;
+  Matrix contravariant_vectors_kokkos;
+  DataArray inverse_jacobian_kokkos;
+
+  void sync_to_device() {
+    copy_xtensor_to_kokkos(node_coordinates_kokkos, node_coordinates);
+    copy_xtensor_to_kokkos(left_neighbors_kokkos, left_neighbors);
+    copy_xtensor_to_kokkos(jacobian_matrix_kokkos, jacobian_matrix);
+    copy_xtensor_to_kokkos(contravariant_vectors_kokkos, contravariant_vectors);
+    copy_xtensor_to_kokkos(inverse_jacobian_kokkos, inverse_jacobian);
+  }
+
+  void check_data() {
+    compare_view_xtensor(node_coordinates_kokkos, node_coordinates);
+    compare_view_xtensor(left_neighbors_kokkos, left_neighbors);
+    compare_view_xtensor(jacobian_matrix_kokkos, jacobian_matrix);
+    compare_view_xtensor(contravariant_vectors_kokkos, contravariant_vectors);
+    compare_view_xtensor(inverse_jacobian_kokkos, inverse_jacobian);
+  }
 };
 
 namespace detail {
-template <class T, class Basis, class Mapping, std::size_t NDIM>
+template <class T, class Basis, class Mapping, std::size_t NDIMS>
 struct StructuredContainerInitializer;
 
 template <class T, class Basis, class Mapping>
@@ -42,7 +71,7 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
         1,
     });
     container.contravariant_vectors.resize({tot_elems, Basis::NNodes, 1, 1});
-    container.inverse_jacobian.resize({tot_elems, Basis::NNodes});
+    container.inverse_jacobian.resize({tot_elems, Basis::NNodes, 1});
   }
 
   inline constexpr static void calc_node_coordinates(std::size_t nelems,
@@ -74,7 +103,7 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
                                                      ndarray &inverse_jacobian,
                                                      const ndarray &jacobian) {
     for (std::size_t i = 0; i < Basis::NNodes; ++i) {
-      inverse_jacobian(ielem, i) = 1.0 / jacobian(ielem, i, 0, 0);
+      inverse_jacobian(ielem, i, 0) = 1.0 / jacobian(ielem, i, 0, 0);
     }
   }
 
@@ -94,111 +123,42 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
 };
 } // namespace detail
 
-template <class T, class Basis, class Mapping, std::size_t NDIM>
+template <class T, class Basis, class Mapping, std::size_t NDIMS>
 struct StructuredElementInitializer {
-  using ndarray = StructuredElementContainer<T, NDIM>::ndarray;
-  using index_array = StructuredElementContainer<T, NDIM>::index_array;
+  using ndarray = StructuredElementContainer<T, NDIMS>::ndarray;
+  using index_array = StructuredElementContainer<T, NDIMS>::index_array;
 
   StructuredElementInitializer(Mapping mapping_,
-                               std::array<bool, NDIM> periodic_)
+                               std::array<bool, NDIMS> periodic_)
       : mapping(mapping_), periodic(periodic_) {}
 
-  constexpr void init_elements(std::array<std::size_t, NDIM> n_cells,
-                               StructuredElementContainer<T, NDIM> &container) {
+  constexpr void
+  init_elements(std::array<std::size_t, NDIMS> n_cells,
+                StructuredElementContainer<T, NDIMS> &container) {
     container.nelements = n_cells;
     std::size_t total_elements = std::accumulate(
         n_cells.begin(), n_cells.end(), 1.0, std::multiplies<std::size_t>());
-    detail::StructuredContainerInitializer<T, Basis, Mapping, NDIM>::resize(
+    detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::resize(
         total_elements, container);
 
     for (std::size_t i = 0; i < total_elements; ++i) {
-      detail::StructuredContainerInitializer<T, Basis, Mapping, NDIM>::
+      detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
           calc_node_coordinates(total_elements, i, container.node_coordinates,
                                 mapping);
-      detail::StructuredContainerInitializer<T, Basis, Mapping, NDIM>::
+      detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
           calc_jacobian_matrix(i, container.jacobian_matrix,
                                container.node_coordinates);
-      detail::StructuredContainerInitializer<T, Basis, Mapping, NDIM>::
+      detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
           calc_inverse_jacobian(i, container.inverse_jacobian,
                                 container.jacobian_matrix);
     }
 
-    detail::StructuredContainerInitializer<T, Basis, Mapping, NDIM>::
+    detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         initialize_left_neighbor(total_elements, container.left_neighbors,
                                  periodic);
   }
 
   Mapping mapping;
-  std::array<bool, NDIM> periodic;
-};
-
-namespace detail {
-template <class T, std::size_t NVARS, std::size_t NDIMS>
-struct SolutionInitializer;
-
-template <class T, std::size_t NVARS>
-struct SolutionInitializer<T, NVARS, 1> {
-
-  using ndarray = xt::xarray<T>;
-
-  inline constexpr static void initialize_u(std::size_t total_elements,
-                                            std::size_t nnodes, ndarray &u) {
-    u.resize({total_elements, nnodes, NVARS});
-    u.fill(0.0);
-  }
-
-  inline constexpr static void initialize_du(std::size_t total_elements,
-                                             std::size_t nnodes, ndarray &du) {
-    du.resize({total_elements, nnodes, NVARS});
-    du.fill(0.0);
-  }
-
-  inline constexpr static void
-  initialize_surface_flux_value(std::size_t total_elements, std::size_t nnodes,
-                                ndarray &surface_flux_value) {
-    surface_flux_value.resize({total_elements, 2, NVARS});
-    surface_flux_value.fill(0.0);
-  }
-};
-} // namespace detail
-
-template <class Mesh, class Basis, class Equations>
-struct Solution {
-  using traits = equations::EquationTraits<Equations>;
-  using value_type = typename traits::value_type;
-  constexpr static std::size_t NDIMS = traits::NDIMS;
-  constexpr static std::size_t NVARS = traits::NVARS;
-
-  using ndarray = xt::xarray<value_type>;
-
-  Solution(const Mesh &mesh) {
-    std::size_t total_elements = mesh.get_nelem();
-    detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_u(
-        total_elements, Basis::NNodes, u);
-
-    detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_du(
-        total_elements, Basis::NNodes, du);
-
-    detail::SolutionInitializer<value_type, NVARS, NDIMS>::
-        initialize_surface_flux_value(total_elements, Basis::NNodes,
-                                      surface_flux_value);
-  }
-
-  Solution() = default;
-
-  Solution clone_shape() const {
-    Solution tmp;
-    tmp.u.resize(u.shape());
-    tmp.du.resize(du.shape());
-    tmp.surface_flux_value.resize(surface_flux_value.shape());
-    tmp.u.fill(0.0);
-    tmp.du.fill(0.0);
-    tmp.surface_flux_value.fill(0.0);
-    return tmp;
-  }
-
-  ndarray u;
-  ndarray du;
-  ndarray surface_flux_value;
+  std::array<bool, NDIMS> periodic;
 };
 } // namespace DGSEM
