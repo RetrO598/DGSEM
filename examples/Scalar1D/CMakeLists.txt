@@ -1,0 +1,3 @@
+add_subdirectory(buckley_leverett)
+add_subdirectory(inviscid_burgers)
+add_subdirectory(shock_capture)

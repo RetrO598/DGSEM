@@ -1,0 +1,2 @@
+add_executable(buckley_leverett buckley_leverett.cpp)
+target_link_libraries(buckley_leverett PRIVATE dgsem)

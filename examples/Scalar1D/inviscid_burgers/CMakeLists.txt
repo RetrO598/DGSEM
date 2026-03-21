@@ -1,0 +1,2 @@
+add_executable(inviscid_burgers inviscid_burgers.cpp)
+target_link_libraries(inviscid_burgers PRIVATE dgsem)

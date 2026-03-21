@@ -1,6 +1,5 @@
 /.vscode
 /.build
-*.txt
 *.out
 *.py
 /build

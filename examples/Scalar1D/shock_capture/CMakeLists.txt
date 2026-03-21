@@ -1,0 +1,2 @@
+add_executable(shock_capture shock_capture.cpp)
+target_link_libraries(shock_capture PRIVATE dgsem)
