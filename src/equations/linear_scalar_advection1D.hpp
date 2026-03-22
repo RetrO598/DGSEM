@@ -15,13 +15,16 @@ public:
   constexpr static std::size_t NDIMS = 1;
   constexpr static std::size_t NVARS = 1;
 
+  KOKKOS_INLINE_FUNCTION
   T flux(const T &u, std::size_t dim) const { return speed * u; }
 
+  KOKKOS_INLINE_FUNCTION
   std::array<value_type, NVARS> flux(const std::array<value_type, NVARS> &u,
                                      std::size_t dim) const {
     return {speed * u[0]};
   }
 
+  KOKKOS_INLINE_FUNCTION
   T get_wave_speed() const { return speed; }
 
 private:

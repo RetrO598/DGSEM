@@ -1,4 +1,4 @@
-#include "boundary_condition/bc_new.hpp"
+#include "time_integrator/SSPRK3.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <cstddef>
@@ -48,7 +48,7 @@ int main() {
 
     container.sync_to_device();
 
-    container.check_data();
+    // container.check_data();
 
     Solver solver(eq, mesh, container, boundaries);
 
@@ -59,8 +59,10 @@ int main() {
     std::cout << "Testing solver.initialize()..." << std::endl;
     solver.initialize(initial, sol);
     std::cout << "solver.initialize() returned successfully." << std::endl;
-    using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
-    TimeIntegrator time_integrator(sol);
+    // sol.check_solution();
+    // using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
+    using TimeIntegrator = DGSEM::SSPRK3_kokkos<double, Solver, Mesh, Solution>;
+    TimeIntegrator time_integrator(sol, mesh);
     const double t_final = 4.0;
     const double cfl = 0.1;
     const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
@@ -75,7 +77,7 @@ int main() {
     std::cout << "  t_final = " << t_final << std::endl;
 
     while (t < t_final) {
-      time_integrator.step(solver, sol, dt);
+      time_integrator.step_kokkos(solver, sol, dt);
       t += dt;
       iter++;
 
@@ -85,14 +87,29 @@ int main() {
                   << std::endl;
       }
     }
+
+    // time_integrator.step_kokkos(solver, sol, dt);
+
+    // // solver.calc_rhs(sol);
+    // sol.check_solution();
+    // time_integrator.step_kokkos(solver, sol, dt);
+    // sol.check_solution();
+
     std::ofstream solution_file("solution.txt", std::ios::out);
+    std::ofstream solution_kokkos_file("solution_kokkos.txt", std::ios::out);
+
     std::ofstream nodes_file("nodes.txt", std::ios::out);
 
+    auto u_host =
+        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_kokkos);
+
     solution_file << std::scientific << std::setprecision(16);
+    solution_kokkos_file << std::scientific << std::setprecision(16);
     nodes_file << std::scientific << std::setprecision(16);
 
     for (std::size_t i = 0; i < mesh.get_nelem(); ++i) {
       for (std::size_t node = 0; node < MyBasis::NNodes; ++node) {
+        solution_kokkos_file << u_host(i, node, 0) << "\n";
         solution_file << sol.u(i, node, 0) << "\n";
         nodes_file << container.node_coordinates(i, node, 0) << "\n";
       }

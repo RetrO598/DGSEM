@@ -1,5 +1,4 @@
 #include "base/numerical_flux.hpp"
-#include "boundary_condition/bc_new.hpp"
 #include "boundary_condition/initial_condition_base.hpp"
 #include "equations/compressible_euler1D.hpp"
 #include "space_integral/volume_flux.hpp"

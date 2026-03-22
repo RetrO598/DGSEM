@@ -1,6 +1,8 @@
 #pragma once
 
+#include <Kokkos_Core.hpp>
 #include <cstddef>
+
 namespace DGSEM {
 namespace equations {
 class Equations1DBase {

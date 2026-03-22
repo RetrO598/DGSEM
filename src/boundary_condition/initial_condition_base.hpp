@@ -1,7 +1,7 @@
 #pragma once
 
-#include "equations/buckley_leverett1D.hpp"
-#include "equations/inviscid_burgers1D.hpp"
+#include <Kokkos_Core.hpp>
+#include <Kokkos_Macros.hpp>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -44,6 +44,7 @@ public:
 
   UniformInitial(std::array<value_type, NVARS> vars) : initial_vars(vars) {}
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIM> coordinate) const {
     std::cout << "doing uniform initialization." << "\n";
     return initial_vars;
@@ -67,6 +68,7 @@ public:
 
   SinwaveInitial() = default;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T value = 1.0 + 0.5 * std::sin(std::numbers::pi * x);
@@ -88,6 +90,7 @@ public:
 
   BurgersSinwaveInitial() = default;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T value = std::sin(2.0 * std::numbers::pi * x);
@@ -109,6 +112,7 @@ public:
 
   GaussianInitial() = default;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T value = std::exp(-50.0 * x * x);
@@ -130,6 +134,7 @@ public:
 
   CompositeWaveInitial() = default;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T xmin = -1.0;
     T xmax = 1.0;
@@ -165,6 +170,7 @@ public:
 
   BuckleyLeverettInitial() = default;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T value = 0.0;
@@ -191,6 +197,7 @@ public:
 
   ShuOsherInitial() = default;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T rho = 0.0;
@@ -223,6 +230,7 @@ public:
 
   SodShockTubeInitial() = default;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T rho, u, p;

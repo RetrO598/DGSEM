@@ -1,10 +1,12 @@
 #pragma once
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <equations/equations_base.hpp>
+
 namespace DGSEM {
 namespace equations {
 template <class T>
@@ -16,6 +18,7 @@ public:
   constexpr static std::size_t NDIMS = 1;
   constexpr static std::size_t NVARS = 3;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<value_type, NVARS> flux(const std::array<value_type, NVARS> &u,
                                      std::size_t dim) const {
     value_type rho = u[0];
@@ -27,6 +30,7 @@ public:
     return {mom, mom * u_vel + p, u_vel * (rhoE + p)};
   }
 
+  KOKKOS_INLINE_FUNCTION
   value_type get_wave_speed(const std::array<value_type, NVARS> &u_ll,
                             const std::array<value_type, NVARS> &u_rr) const {
     value_type rho_ll = u_ll[0];
@@ -48,6 +52,7 @@ public:
            std::max(a_ll, a_rr);
   }
 
+  KOKKOS_INLINE_FUNCTION
   value_type get_gamma() const { return gamma_; }
 
 private:

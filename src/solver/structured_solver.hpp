@@ -1,10 +1,20 @@
 #pragma once
+#include "boundary_condition/initial_condition_base.hpp"
+#include "boundary_condition/initial_functor.hpp"
+#include "space_integral/jacobian.hpp"
+#include "space_integral/surface_flux.hpp"
+#include "space_integral/surface_flux_functor.hpp"
+#include "space_integral/surface_integral_functor.hpp"
+#include "space_integral/volume_integral_functor.hpp"
+#include <Kokkos_Core.hpp>
+#include <Kokkos_Macros.hpp>
 #include <array>
 #include <boundary_condition/boundary_condition.hpp>
 #include <cmath>
 #include <concepts>
 #include <containers/containers.hpp>
 #include <cstddef>
+#include <decl/Kokkos_Declare_OPENMP.hpp>
 #include <equations/equations.hpp>
 #include <space_integral/space_integral.hpp>
 
@@ -19,6 +29,8 @@ public:
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
+  using EquationType = Equations;
+
   using ElementCache = StructuredElementContainer<value_type, NDIMS>;
 
   using solution = Solution<Mesh, Basis, Equations>;
@@ -27,7 +39,8 @@ public:
   StructuredSolver(const Equations &eq_, const Mesh &mesh_,
                    const ElementCache &element_,
                    const BoundarySetType &boundary_set_)
-      : eq(eq_), mesh(mesh_), element(element_), boundary_set(boundary_set_) {}
+      : eq(eq_), mesh(mesh_), element(element_), boundary_set(boundary_set_),
+        n_dofs(std::pow(Basis::NNodes, NDIMS)) {}
 
   template <class Derived>
   void initialize(const AbstractInitial<Derived, Equations> &initial_condition,
@@ -55,11 +68,14 @@ public:
     alpha_smooth = alpha_smooth_;
   }
 
+  std::size_t get_ndofs() const { return n_dofs; }
+
 private:
   BoundarySetType boundary_set;
   Equations eq;
   Mesh mesh;
   ElementCache element;
+  std::size_t n_dofs;
 
   // for shock-capturing indicators
   value_type alpha_max = 0.5;
@@ -76,11 +92,11 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                solution &sol) {
 
   std::size_t total_elements = mesh.get_nelem();
-  std::size_t nodes = std::pow(Basis::NNodes, NDIMS);
+  // std::size_t n_dofs = std::pow(Basis::NNodes, NDIMS);
 
   std::array<value_type, NDIMS> coord;
   for (std::size_t elem = 0; elem < total_elements; ++elem) {
-    for (std::size_t inode = 0; inode < nodes; ++inode) {
+    for (std::size_t inode = 0; inode < n_dofs; ++inode) {
       for (std::size_t idim = 0; idim < NDIMS; ++idim) {
         coord[idim] = element.node_coordinates(elem, inode, idim);
       }
@@ -91,6 +107,35 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
       }
     }
   }
+
+  // auto init = initial_condition;
+  // auto u = sol.u_kokkos;
+  // auto node_coords = element.node_coordinates_kokkos;
+
+  // Kokkos::parallel_for(
+  //     "initialize_elements", total_elements, KOKKOS_LAMBDA(const int elem) {
+  //       std::array<value_type, NDIMS> coord;
+  //       for (std::size_t inode = 0; inode < nodes; ++inode) {
+  //         for (std::size_t idim = 0; idim < NDIMS; ++idim) {
+  //           coord[idim] = node_coords(elem, inode, idim);
+  //         }
+
+  //         auto init_value = init.get_initial(coord);
+
+  //         for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
+  //           u(elem, inode, ivar) = init_value[ivar];
+  //         }
+  //       }
+  //     });
+
+  // InitialFunctor<value_type, AbstractInitial<Derived, Equations>,
+  // NDIMS>::apply(
+  //     sol.u_kokkos, element.node_coordinates_kokkos, init, total_elements,
+  //     nodes, NVARS);
+
+  InitialFunctor<value_type, AbstractInitial<Derived, Equations>, NDIMS>::apply(
+      sol.u_kokkos, element.node_coordinates_kokkos, initial_condition,
+      mesh.get_num_cells(), n_dofs, NVARS);
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -102,6 +147,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
     volume_integral(ielem, eq, sol.u, sol.du);
   }
+
+  VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
+      sol.u_kokkos, sol.du_kokkos, eq, volume_integral, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -117,6 +165,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
     volume_integral(ielem, eq, sol.u, sol.du);
   }
+
+  VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
+      sol.u_kokkos, sol.du_kokkos, eq, volume_integral, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -129,6 +180,12 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                     ElementCache>::interface_flux(element, eq, ielem, sol.u,
                                                   sol.surface_flux_value);
   }
+
+  InterfaceFluxFunctor<
+      value_type, Equations, Basis,
+      InterfaceHelper<Basis, Equations, SurfaceFlux, ElementCache>,
+      NDIMS>::apply(element.left_neighbors_kokkos, eq, sol.u_kokkos,
+                    sol.surface_flux_value_kokkos, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -140,6 +197,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
     SurfaceIntegral<Basis, Equations, ElementCache>::integral(
         element, ielem, sol.du, sol.surface_flux_value);
   }
+
+  SurfaceIntegralFunctor<Basis, Equations, ElementCache, NDIMS>::apply(
+      sol.du_kokkos, sol.surface_flux_value_kokkos, eq, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -149,16 +209,6 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                                                                      &sol) {
 
   for (std::size_t i = 0; i < NDIMS; ++i) {
-    // auto bc1 = mesh.get_boundary(i);
-    // auto bc2 = mesh.get_boundary(i + NDIMS);
-
-    // BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
-    //     eq, bc1, mesh.get_num_cells(), i, sol.u, sol.surface_flux_value);
-
-    // BoundaryDispatcher<Basis, Equations, SurfaceFlux, NDIMS>::apply(
-    //     eq, bc2, mesh.get_num_cells(), i + NDIMS, sol.u,
-    //     sol.surface_flux_value);
-
     boundary_set
         .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
             mesh, Basis::NNodes, eq, sol.u, sol.surface_flux_value, i, 0.0);
@@ -177,6 +227,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
     JacobianProj<Basis, Equations, ElementCache>::apply(element, ielem, sol.du);
   }
+
+  JacobianProjFunctor<Basis, Equations, ElementCache, NDIMS>::apply(
+      sol.du_kokkos, element.inverse_jacobian_kokkos, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -184,11 +237,17 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_rhs(solution &sol) {
   sol.du.fill(0.0); // Clear the residual before accumulation
+  Kokkos::deep_copy(sol.du_kokkos, 0.0);
   calc_volume_integral(sol);
+  // sol.check_solution();
   calc_interface_flux(sol);
+  // sol.check_solution();
   apply_boundary_condition(sol);
+  // sol.check_solution();
   calc_surface_integral(sol);
+  // sol.check_solution();
   apply_jacobian(sol);
+  // sol.check_solution();
 }
 
 } // namespace DGSEM

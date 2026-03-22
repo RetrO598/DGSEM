@@ -1,3 +1,4 @@
+#include "utils/kokkos_helper.hpp"
 #include <Kokkos_Core.hpp>
 #include <base/base.hpp>
 #include <cstddef>
@@ -95,6 +96,12 @@ struct Solution {
     clone_view_shape(tmp.surface_flux_value_kokkos, surface_flux_value_kokkos);
 
     return tmp;
+  }
+
+  void check_solution() {
+    compare_view_xtensor(u_kokkos, u);
+    compare_view_xtensor(du_kokkos, du);
+    compare_view_xtensor(surface_flux_value_kokkos, surface_flux_value);
   }
 
   ndarray u;
