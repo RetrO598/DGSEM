@@ -1,4 +1,6 @@
 #pragma once
+#include <Kokkos_Core.hpp>
+#include <Kokkos_Macros.hpp>
 #include <array>
 #include <cstddef>
 #include <span>
@@ -8,12 +10,15 @@ template <class T, std::size_t N>
 struct Vec {
   std::array<T, N> data{};
 
+  KOKKOS_INLINE_FUNCTION
   constexpr T &operator[](std::size_t i) noexcept { return data[i]; }
 
+  KOKKOS_INLINE_FUNCTION
   constexpr const T &operator[](std::size_t i) const noexcept {
     return data[i];
   }
 
+  KOKKOS_INLINE_FUNCTION
   static constexpr std::size_t size() noexcept { return N; }
 
   constexpr std::span<T, N> span() noexcept { return data; }
@@ -26,28 +31,37 @@ struct Mat {
   static_assert(M > 0 && N > 0);
 
   std::array<T, M * N> data{};
+
+  KOKKOS_INLINE_FUNCTION
   constexpr T &operator()(std::size_t i, std::size_t j) noexcept {
     return data[i * N + j];
   }
 
+  KOKKOS_INLINE_FUNCTION
   constexpr const T &operator()(std::size_t i, std::size_t j) const noexcept {
     return data[i * N + j];
   }
+
+  KOKKOS_INLINE_FUNCTION
   static constexpr std::size_t rows() noexcept { return M; }
+
+  KOKKOS_INLINE_FUNCTION
   static constexpr std::size_t cols() noexcept { return N; }
   constexpr std::span<T, M * N> span() noexcept { return data; }
 
   constexpr std::span<const T, M * N> span() const noexcept { return data; }
 
+  KOKKOS_INLINE_FUNCTION
   constexpr Mat<T, N, M> transpose() const noexcept;
 
+  KOKKOS_INLINE_FUNCTION
   constexpr Mat<T, M, N> inverse() const
     requires(M == N);
 };
 
 template <class T, std::size_t M, std::size_t N>
-constexpr Mat<T, M, N> operator+(const Mat<T, M, N> &A,
-                                 const Mat<T, M, N> &B) noexcept {
+KOKKOS_INLINE_FUNCTION constexpr Mat<T, M, N>
+operator+(const Mat<T, M, N> &A, const Mat<T, M, N> &B) noexcept {
   Mat<T, M, N> C{};
   for (std::size_t i = 0; i < M * N; ++i)
     C.data[i] = A.data[i] + B.data[i];
@@ -55,7 +69,8 @@ constexpr Mat<T, M, N> operator+(const Mat<T, M, N> &A,
 }
 
 template <class T, std::size_t M, std::size_t N>
-constexpr Mat<T, M, N> operator*(T a, const Mat<T, M, N> &A) noexcept {
+KOKKOS_INLINE_FUNCTION constexpr Mat<T, M, N>
+operator*(T a, const Mat<T, M, N> &A) noexcept {
   Mat<T, M, N> C{};
   for (std::size_t i = 0; i < M * N; ++i)
     C.data[i] = a * A.data[i];
@@ -63,8 +78,8 @@ constexpr Mat<T, M, N> operator*(T a, const Mat<T, M, N> &A) noexcept {
 }
 
 template <class T, std::size_t M, std::size_t N>
-constexpr Vec<T, M> operator*(const Mat<T, M, N> &A,
-                              const Vec<T, N> &x) noexcept {
+KOKKOS_INLINE_FUNCTION constexpr Vec<T, M>
+operator*(const Mat<T, M, N> &A, const Vec<T, N> &x) noexcept {
   Vec<T, M> y{};
   for (std::size_t i = 0; i < M; ++i) {
     T sum{};
@@ -76,8 +91,8 @@ constexpr Vec<T, M> operator*(const Mat<T, M, N> &A,
 }
 
 template <class T, std::size_t M, std::size_t K, std::size_t N>
-constexpr Mat<T, M, N> operator*(const Mat<T, M, K> &A,
-                                 const Mat<T, K, N> &B) noexcept {
+KOKKOS_INLINE_FUNCTION constexpr Mat<T, M, N>
+operator*(const Mat<T, M, K> &A, const Mat<T, K, N> &B) noexcept {
   Mat<T, M, N> C{};
   for (std::size_t i = 0; i < M; ++i)
     for (std::size_t j = 0; j < N; ++j) {

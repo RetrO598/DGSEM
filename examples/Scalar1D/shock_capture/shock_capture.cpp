@@ -110,7 +110,7 @@ int main() {
     for (std::size_t i = 0; i < mesh.get_nelem(); ++i) {
       for (std::size_t node = 0; node < MyBasis::NNodes; ++node) {
         solution_kokkos_file << u_host(i, node, 0) << "\n";
-        solution_file << sol.u(i, node, 0) << "\n";
+        // solution_file << sol.u(i, node, 0) << "\n";
         nodes_file << container.node_coordinates(i, node, 0) << "\n";
       }
     }

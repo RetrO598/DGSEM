@@ -6,9 +6,9 @@
 #include <cstddef>
 #include <equations/equations.hpp>
 
+#include "base/global_def.hpp"
 #include <vector>
 #include <xtensor/core/xtensor_forward.hpp>
-#include "base/global_def.hpp"
 
 namespace DGSEM {
 
@@ -301,10 +301,10 @@ struct VolumeIntegralSplitForm {
   template <class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations &eq,
                                          const ArrayU &u, ArrayDu &du) const {
-    detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
-                                NDIMS>::template split_form_kernel_kokkos<Basis,
-                                                                          Equations>(
-        ielem, eq, u, du);
+    detail::VolumeIntegralSplit<
+        value_type, NVARS, NumericFlux<Equations>,
+        NDIMS>::template split_form_kernel_kokkos<Basis, Equations>(ielem, eq,
+                                                                    u, du);
   }
 };
 
@@ -320,6 +320,9 @@ struct VolumeIntegralShockCapturingHG
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
+  using AlphaView = solution_type_traits<value_type, NDIMS>::ElementArray;
+  using DataArray = solution_type_traits<value_type, NDIMS>::DataArray;
+
   VolumeIntegralShockCapturingHG() = delete;
 
   VolumeIntegralShockCapturingHG(value_type alpha_max_, value_type alpha_min_,
@@ -328,21 +331,23 @@ struct VolumeIntegralShockCapturingHG
       : indicator(alpha_max_, alpha_min_, alpha_smooth_) {
     value_type eps_val = std::numeric_limits<value_type>::epsilon();
     atol = std::max(100.0 * eps_val, std::pow(eps_val, 0.75));
-    alpha_view =
-        Kokkos::View<value_type *, Device>("alpha_view", total_elements_);
+    alpha_view = AlphaView("alpha_view", total_elements_);
   }
 
   inline void calc_alpha(std::size_t nelem, const xt::xarray<value_type> &u) {
     alpha = indicator(nelem, u);
-    sync_alpha_view();
+    // sync_alpha_view();
   }
 
-  inline void sync_alpha_view() {
-    auto host_alpha = Kokkos::create_mirror_view(alpha_view);
-    for (std::size_t i = 0; i < alpha.size(); ++i) {
-      host_alpha(i) = alpha[i];
-    }
-    Kokkos::deep_copy(alpha_view, host_alpha);
+  // inline void sync_alpha_view() {
+  //   auto host_alpha = Kokkos::create_mirror_view(alpha_view);
+  //   for (std::size_t i = 0; i < alpha.size(); ++i) {
+  //     host_alpha(i) = alpha[i];
+  //   }
+  //   Kokkos::deep_copy(alpha_view, host_alpha);
+  // }
+  inline void calc_alpha_kokkos(std::size_t nelem, DataArray u) {
+    indicator(nelem, u, alpha_view);
   }
 
   inline constexpr void operator()(std::size_t ielem, const Equations &eq,
@@ -374,15 +379,15 @@ struct VolumeIntegralShockCapturingHG
     bool dg_only = std::abs(alpha_ielem - 0.0) <= atol;
 
     if (dg_only) {
-      detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
-                                  NDIMS>::template split_form_kernel_kokkos<Basis,
-                                                                            Equations>(
-          ielem, eq, u, du);
+      detail::VolumeIntegralSplit<
+          value_type, NVARS, NumericFlux<Equations>,
+          NDIMS>::template split_form_kernel_kokkos<Basis, Equations>(ielem, eq,
+                                                                      u, du);
     } else {
       detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
-                                  NDIMS>::template split_form_kernel_kokkos<Basis,
-                                                                            Equations>(
-          ielem, eq, u, du, (1.0 - alpha_ielem));
+                                  NDIMS>::
+          template split_form_kernel_kokkos<Basis, Equations>(
+              ielem, eq, u, du, (1.0 - alpha_ielem));
 
       detail::FinitVolumeIntegral<value_type, NVARS, FvFlux<Equations>, NDIMS>::
           template fv_kernel_kokkos<Basis, Equations>(ielem, eq, u, du,
@@ -393,7 +398,8 @@ struct VolumeIntegralShockCapturingHG
 private:
   Indicator indicator;
   std::vector<value_type> alpha;
-  Kokkos::View<value_type *, Device> alpha_view;
+  // Kokkos::View<value_type *, Device> alpha_view;
+  AlphaView alpha_view;
   value_type atol;
 };
 } // namespace DGSEM
