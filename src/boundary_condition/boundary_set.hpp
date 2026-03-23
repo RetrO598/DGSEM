@@ -1,12 +1,13 @@
 #pragma once
 
-#include "base/global_def.hpp"
 #include <array>
+#include <base/base.hpp>
 #include <cstddef>
 #include <equations/equations.hpp>
 #include <tuple>
 #include <type_traits>
 #include <xtensor/core/xtensor_forward.hpp>
+
 
 namespace DGSEM {
 
@@ -20,7 +21,7 @@ struct BCDispatcher<1, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ArrayFlux> {
   static void dispatch(const BC &bc, const Mesh &mesh, const Equations &eq,
                        const ArrayU &u, ArrayFlux &surface_flux,
                        std::size_t face_id, T time) {
-    // 1D case: No parallel_for needed for many elements, 
+    // 1D case: No parallel_for needed for many elements,
     // but we use a single-threaded kernel to access device data.
     Kokkos::parallel_for(
         "BC_Apply_1D", 1, KOKKOS_LAMBDA(int) {
@@ -113,7 +114,8 @@ struct PeriodicBC {
   apply_device(const Mesh &mesh, const Equations &eq, const ArrayU &u,
                ArrayFlux &surface_flux, std::size_t face_id, T time,
                int index = 0) const {
-    // Periodic BCs are usually handled by the interface flux logic with wrapping
+    // Periodic BCs are usually handled by the interface flux logic with
+    // wrapping
     return;
   }
 };
@@ -136,15 +138,27 @@ struct DirichletBC {
     using value_type = typename traits::value_type;
     constexpr static std::size_t NVARS = traits::NVARS;
 
+    auto get_u_outer = [&](const std::array<T, NDIMS> &coord, T t) {
+      std::array<T, NVARS> u_out{};
+      if constexpr (std::is_invocable_v<Func, const std::array<T, NDIMS> &,
+                                        T>) {
+        u_out = func(coord, t);
+      } else {
+        for (std::size_t var = 0; var < NVARS; ++var) {
+          u_out[var] = func[var];
+        }
+      }
+      return u_out;
+    };
+
     if (face_id == 0) {
-      std::array<T, NVARS> u_outer{};
       std::array<T, NVARS> u_boundary{};
       for (std::size_t var = 0; var < NVARS; ++var) {
         u_boundary[var] = u(0, 0, var);
       }
       std::array<T, NDIMS> coord{};
       coord[0] = mesh.get_face_coord(face_id);
-      u_outer = func(coord, time);
+      std::array<T, NVARS> u_outer = get_u_outer(coord, time);
 
       std::array<T, NVARS> boundary_flux =
           SurfaceFlux::numerical_flux(eq, u_outer, u_boundary);
@@ -153,7 +167,6 @@ struct DirichletBC {
         surface_flux(0, 0, var) = boundary_flux[var];
       }
     } else if (face_id == 1) {
-      std::array<T, NVARS> u_outer{};
       std::array<T, NVARS> u_boundary{};
       std::size_t n_cells = mesh.get_num_cells(0);
       for (std::size_t var = 0; var < NVARS; ++var) {
@@ -162,8 +175,7 @@ struct DirichletBC {
 
       std::array<T, NDIMS> coord{};
       coord[0] = mesh.get_face_coord(face_id);
-
-      u_outer = func(coord, time);
+      std::array<T, NVARS> u_outer = get_u_outer(coord, time);
 
       std::array<T, NVARS> boundary_flux =
           SurfaceFlux::numerical_flux(eq, u_boundary, u_outer);
@@ -184,33 +196,46 @@ struct DirichletBC {
     using traits = equations::EquationTraits<Equations>;
     constexpr std::size_t NVARS = traits::NVARS;
 
+    auto get_u_outer_device = [&](const std::array<T, NDIMS> &coord, T t) {
+      std::array<T, NVARS> u_out{};
+      if constexpr (std::is_invocable_v<Func, const std::array<T, NDIMS> &,
+                                        T>) {
+        u_out = func(coord, t);
+      } else {
+        for (std::size_t var = 0; var < NVARS; ++var) {
+          u_out[var] = func[var];
+        }
+      }
+      return u_out;
+    };
+
     if constexpr (NDIMS == 1) {
       std::size_t n_cells = mesh.get_num_cells(0);
       std::size_t n_nodes = u.extent(1);
-      
+
       if (face_id == 0) {
-        std::array<T, NVARS> u_outer{};
         std::array<T, NVARS> u_boundary{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_boundary[var] = u(0, 0, var);
         }
         std::array<T, 1> coord{mesh.get_face_coord(0)};
-        u_outer = func(coord, time);
+        std::array<T, NVARS> u_outer = get_u_outer_device(coord, time);
 
-        auto boundary_flux = SurfaceFlux::numerical_flux(eq, u_outer, u_boundary);
+        auto boundary_flux =
+            SurfaceFlux::numerical_flux(eq, u_outer, u_boundary);
         for (std::size_t var = 0; var < NVARS; ++var) {
           surface_flux(0, 0, var) = boundary_flux[var];
         }
       } else {
-        std::array<T, NVARS> u_outer{};
         std::array<T, NVARS> u_boundary{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_boundary[var] = u(n_cells - 1, n_nodes - 1, var);
         }
         std::array<T, 1> coord{mesh.get_face_coord(1)};
-        u_outer = func(coord, time);
+        std::array<T, NVARS> u_outer = get_u_outer_device(coord, time);
 
-        auto boundary_flux = SurfaceFlux::numerical_flux(eq, u_boundary, u_outer);
+        auto boundary_flux =
+            SurfaceFlux::numerical_flux(eq, u_boundary, u_outer);
         for (std::size_t var = 0; var < NVARS; ++var) {
           surface_flux(n_cells - 1, 1, var) = boundary_flux[var];
         }

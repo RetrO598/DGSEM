@@ -31,10 +31,11 @@ int main() {
 
     std::array<double, 2> domain_mesh = {-1.0, 1.0};
     std::array<std::size_t, 1> n_cells = {120};
-    std::array<DGSEM::BoundaryCondition, 2> bcs = {
-        DGSEM::BoundaryCondition::Periodic, DGSEM::BoundaryCondition::Periodic};
+    // std::array<DGSEM::BoundaryCondition, 2> bcs = {
+    //     DGSEM::BoundaryCondition::Periodic,
+    //     DGSEM::BoundaryCondition::Periodic};
 
-    Mesh mesh(domain_mesh, n_cells, bcs);
+    Mesh mesh(domain_mesh, n_cells);
     Eq eq(1.0);
 
     DGSEM::StructuredElementContainer<double, 1> container;

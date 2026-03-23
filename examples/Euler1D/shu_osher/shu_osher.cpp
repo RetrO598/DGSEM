@@ -41,8 +41,11 @@ int main() {
       return std::array<double, 3>{rho, mom, rhoE};
     };
 
-    auto boundaries = DGSEM::BoundarySet(DGSEM::DirichletBC(dirichFunc),
-                                         DGSEM::DirichletBC(dirichFunc));
+    auto boundaries = DGSEM::BoundarySet(
+        DGSEM::DirichletBC(std::array<double, 3>{
+            3.857, 2.629 * 3.857, 10.333 / 0.4 + 0.5 * 3.857 * 2.629 * 2.629}),
+        DGSEM::DirichletBC(
+            std::array<double, 3>{1.0 + 0.2 * std::sin(25.0), 0.0, 1.0 / 0.4}));
 
     using Mesh = DGSEM::StructuredMesh<double, 1>;
     using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
@@ -51,11 +54,11 @@ int main() {
 
     std::array<double, 2> domain_mesh = {-5.0, 5.0};
     std::array<std::size_t, 1> n_cells = {1024};
-    std::array<DGSEM::BoundaryCondition, 2> bcs = {
-        DGSEM::BoundaryCondition::Extrapolate,
-        DGSEM::BoundaryCondition::Extrapolate};
+    // std::array<DGSEM::BoundaryCondition, 2> bcs = {
+    //     DGSEM::BoundaryCondition::Extrapolate,
+    //     DGSEM::BoundaryCondition::Extrapolate};
 
-    Mesh mesh(domain_mesh, n_cells, bcs);
+    Mesh mesh(domain_mesh, n_cells);
     Eq eq(1.4);
 
     DGSEM::StructuredElementContainer<double, 1> container;

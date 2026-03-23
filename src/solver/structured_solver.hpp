@@ -8,7 +8,6 @@
 #include "space_integral/volume_integral_functor.hpp"
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Macros.hpp>
-#include <array>
 #include <boundary_condition/boundary_condition.hpp>
 #include <cmath>
 #include <concepts>
