@@ -212,11 +212,12 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   for (std::size_t i = 0; i < NDIMS; ++i) {
     boundary_set
         .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
-            mesh, Basis::NNodes, eq, sol.u, sol.surface_flux_value, i, 0.0);
+            mesh, eq, sol.u_kokkos, sol.surface_flux_value_kokkos, 2 * i, 0.0);
 
     boundary_set
         .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
-            mesh, Basis::NNodes, eq, sol.u, sol.surface_flux_value, i + 1, 0.0);
+            mesh, eq, sol.u_kokkos, sol.surface_flux_value_kokkos, 2 * i + 1,
+            0.0);
   }
 }
 
