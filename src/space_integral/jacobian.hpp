@@ -1,10 +1,12 @@
 #pragma once
-#include "../containers/data_container.hpp"
+
 #include <array>
+#include <containers/containers.hpp>
 #include <cstddef>
 #include <decl/Kokkos_Declare_OPENMP.hpp>
 #include <equations/equations.hpp>
-#include <xtensor/core/xtensor_forward.hpp>
+
+
 namespace DGSEM {
 template <class Basis, class Equations, class Element>
 struct JacobianProj;
@@ -14,17 +16,6 @@ struct JacobianProj<Basis, Equations, StructuredElementContainer<T, 1>> {
   using traits = equations::EquationTraits<Equations>;
   using DataArray = typename solution_type_traits<T, 1>::DataArray;
   constexpr static std::size_t NVARS = traits::NVARS;
-
-  inline constexpr static void
-  apply(const StructuredElementContainer<T, 1> &element, std::size_t ielem,
-        xt::xarray<T> &du) {
-    for (std::size_t i = 0; i < Basis::NNodes; ++i) {
-      T factor = -element.inverse_jacobian(ielem, i, 0);
-      for (std::size_t var = 0; var < NVARS; ++var) {
-        du(ielem, i, var) *= factor;
-      }
-    }
-  }
 };
 
 template <class Basis, class Equations, class Element, std::size_t NDIMS>

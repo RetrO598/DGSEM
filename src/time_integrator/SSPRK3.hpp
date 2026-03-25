@@ -1,11 +1,12 @@
 #pragma once
-#include "integrator_base.hpp"
+
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <base/base.hpp>
 #include <cstddef>
 #include <decl/Kokkos_Declare_OPENMP.hpp>
-#include <xtensor/core/xtensor_forward.hpp>
+#include <time_integrator/integrator_base.hpp>
+
 namespace DGSEM {
 
 template <class Equations>
@@ -93,80 +94,32 @@ struct parallel_ma2 {
   std::size_t n_dofs;
 };
 
-template <class T, class Solver, class Solution>
+template <class T, class Solver, class Mesh, class Solution>
 class SSPRK3 : public TimeIntegrator<T, Solver, Solution> {
 public:
   using Equations = typename Solver::EquationType;
-  explicit SSPRK3(const Solution &sol)
-      : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()){};
-
-  void step_kokkos(Solver &solver, Solution &sol, T dt) override {}
-
-  void step(Solver &solver, Solution &sol, T dt) override {
-    solver.calc_rhs(sol);
-    tmp1.u = sol.u + dt * sol.du;
-    solver.calc_rhs(tmp1);
-    tmp2.u = 3.0 / 4.0 * sol.u + 1.0 / 4.0 * tmp1.u + 1.0 / 4.0 * dt * tmp1.du;
-    solver.calc_rhs(tmp2);
-    sol.u = 1.0 / 3.0 * sol.u + 2.0 / 3.0 * tmp2.u + 2.0 / 3.0 * dt * tmp2.du;
-  }
-
-private:
-  Solution tmp1;
-  Solution tmp2;
-};
-
-template <class T, class Solver, class Mesh, class Solution>
-class SSPRK3_kokkos : public TimeIntegrator<T, Solver, Solution> {
-public:
-  using Equations = typename Solver::EquationType;
-  explicit SSPRK3_kokkos(const Solution &sol, const Mesh &mesh_)
+  explicit SSPRK3(const Solution &sol, const Mesh &mesh_)
       : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()), mesh(mesh_){};
 
   void step(Solver &solver, Solution &sol, T dt) override {
+
     solver.calc_rhs(sol);
-    tmp1.u = sol.u + dt * sol.du;
-    solver.calc_rhs(tmp1);
-    tmp2.u = 3.0 / 4.0 * sol.u + 1.0 / 4.0 * tmp1.u + 1.0 / 4.0 * dt * tmp1.du;
-    solver.calc_rhs(tmp2);
-    sol.u = 1.0 / 3.0 * sol.u + 2.0 / 3.0 * tmp2.u + 2.0 / 3.0 * dt * tmp2.du;
-  }
 
-  void step_kokkos(Solver &solver, Solution &sol, T dt) override {
-
-    // solver.calc_rhs(sol);
-    // tmp1.u = sol.u + dt * sol.du;
-    // solver.calc_rhs(tmp1);
-    // tmp2.u = 3.0 / 4.0 * sol.u + 1.0 / 4.0 * tmp1.u + 1.0 / 4.0 * dt *
-    // tmp1.du; solver.calc_rhs(tmp2); sol.u = 1.0 / 3.0 * sol.u + 2.0 / 3.0 *
-    // tmp2.u + 2.0 / 3.0 * dt * tmp2.du;
-
-    // tmp1.check_solution();
-    solver.calc_rhs(sol);
-    // sol.check_solution();
-    // Kokkos::fence();
     parallel_ma2<Equations>::apply(tmp1.u_kokkos, sol.u_kokkos, sol.du_kokkos,
                                    1.0, dt, solver.get_ndofs(),
                                    mesh.get_num_cells());
-    tmp1.u = sol.u + dt * sol.du;
-    // tmp1.check_solution();
-    // sol.check_solution();
+
     solver.calc_rhs(tmp1);
-    // Kokkos::fence();
+
     parallel_ma3<Equations>::apply(
         tmp2.u_kokkos, sol.u_kokkos, tmp1.u_kokkos, tmp1.du_kokkos, 3.0 / 4.0,
         1.0 / 4.0, 1.0 / 4.0 * dt, solver.get_ndofs(), mesh.get_num_cells());
-    tmp2.u = 3.0 / 4.0 * sol.u + 1.0 / 4.0 * tmp1.u + 1.0 / 4.0 * dt * tmp1.du;
-    // sol.check_solution();
-    // tmp1.check_solution();
+
     solver.calc_rhs(tmp2);
-    // Kokkos::fence();
 
     parallel_ma3<Equations>::apply(
         sol.u_kokkos, sol.u_kokkos, tmp2.u_kokkos, tmp2.du_kokkos, 1.0 / 3.0,
         2.0 / 3.0, 2.0 / 3.0 * dt, solver.get_ndofs(), mesh.get_num_cells());
-    sol.u = 1.0 / 3.0 * sol.u + 2.0 / 3.0 * tmp2.u + 2.0 / 3.0 * dt * tmp2.du;
-    // sol.check_solution();
   }
 
 private:

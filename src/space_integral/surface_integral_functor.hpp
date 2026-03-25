@@ -1,11 +1,13 @@
 #pragma once
-#include "space_integral/surface_integral.hpp"
+
 #include <Kokkos_Macros.hpp>
 #include <array>
 #include <base/base.hpp>
 #include <cstddef>
 #include <decl/Kokkos_Declare_OPENMP.hpp>
 #include <equations/equations.hpp>
+#include <space_integral/surface_integral.hpp>
+
 namespace DGSEM {
 template <class Basis, class Equations, class Element, std::size_t NDIMS>
 struct SurfaceIntegralFunctor {

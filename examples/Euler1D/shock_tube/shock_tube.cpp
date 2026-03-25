@@ -50,9 +50,6 @@ int main() {
 
     std::array<double, 2> domain_mesh = {0.0, 1.0};
     std::array<std::size_t, 1> n_cells = {500};
-    // std::array<DGSEM::BoundaryCondition, 2> bcs = {
-    //     DGSEM::BoundaryCondition::Extrapolate,
-    //     DGSEM::BoundaryCondition::Extrapolate};
 
     Mesh mesh(domain_mesh, n_cells);
     Eq eq(1.4);
@@ -78,7 +75,7 @@ int main() {
     solver.initialize(initial, sol);
     std::cout << "solver.initialize() returned successfully." << std::endl;
 
-    using TimeIntegrator = DGSEM::SSPRK3_kokkos<double, Solver, Mesh, Solution>;
+    using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Mesh, Solution>;
     TimeIntegrator time_integrator(sol, mesh);
     const double t_final = 0.2;
     const double cfl = 0.1;
@@ -94,7 +91,7 @@ int main() {
     std::cout << "  t_final = " << t_final << std::endl;
 
     while (t < t_final) {
-      time_integrator.step_kokkos(solver, sol, dt);
+      time_integrator.step(solver, sol, dt);
       t += dt;
       iter++;
 

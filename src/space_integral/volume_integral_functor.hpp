@@ -1,8 +1,8 @@
 #pragma once
 
-#include "base/global_def.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
+#include <base/base.hpp>
 #include <cstddef>
 #include <equations/equations.hpp>
 

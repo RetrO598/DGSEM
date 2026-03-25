@@ -2,10 +2,10 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <polynomial_basis/basis_detail.hpp>
 #include <span>
 
-#include "../base/container_fixed.hpp"
-#include "../polynomial_basis/basis_detail.hpp"
+
 namespace DGSEM {
 namespace Basis {
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <base/base.hpp>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
@@ -10,7 +11,6 @@
 #include <tuple>
 #include <utility>
 
-#include "../base/container_fixed.hpp"
 
 namespace DGSEM {
 namespace Basis {

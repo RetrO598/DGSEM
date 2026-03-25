@@ -1,11 +1,5 @@
 #pragma once
-#include "boundary_condition/initial_condition_base.hpp"
-#include "boundary_condition/initial_functor.hpp"
-#include "space_integral/jacobian.hpp"
-#include "space_integral/surface_flux.hpp"
-#include "space_integral/surface_flux_functor.hpp"
-#include "space_integral/surface_integral_functor.hpp"
-#include "space_integral/volume_integral_functor.hpp"
+
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Macros.hpp>
 #include <boundary_condition/boundary_condition.hpp>
@@ -90,48 +84,6 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
     initialize(const AbstractInitial<Derived, Equations> &initial_condition,
                solution &sol) {
 
-  // std::size_t total_elements = mesh.get_nelem();
-  // std::size_t n_dofs = std::pow(Basis::NNodes, NDIMS);
-
-  // std::array<value_type, NDIMS> coord;
-  // for (std::size_t elem = 0; elem < total_elements; ++elem) {
-  //   for (std::size_t inode = 0; inode < n_dofs; ++inode) {
-  //     for (std::size_t idim = 0; idim < NDIMS; ++idim) {
-  //       coord[idim] = element.node_coordinates(elem, inode, idim);
-  //     }
-
-  //     auto init_value = initial_condition.get_initial(coord);
-  //     for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
-  //       sol.u(elem, inode, ivar) = init_value[ivar];
-  //     }
-  //   }
-  // }
-
-  // auto init = initial_condition;
-  // auto u = sol.u_kokkos;
-  // auto node_coords = element.node_coordinates_kokkos;
-
-  // Kokkos::parallel_for(
-  //     "initialize_elements", total_elements, KOKKOS_LAMBDA(const int elem) {
-  //       std::array<value_type, NDIMS> coord;
-  //       for (std::size_t inode = 0; inode < nodes; ++inode) {
-  //         for (std::size_t idim = 0; idim < NDIMS; ++idim) {
-  //           coord[idim] = node_coords(elem, inode, idim);
-  //         }
-
-  //         auto init_value = init.get_initial(coord);
-
-  //         for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
-  //           u(elem, inode, ivar) = init_value[ivar];
-  //         }
-  //       }
-  //     });
-
-  // InitialFunctor<value_type, AbstractInitial<Derived, Equations>,
-  // NDIMS>::apply(
-  //     sol.u_kokkos, element.node_coordinates_kokkos, init, total_elements,
-  //     nodes, NVARS);
-
   InitialFunctor<value_type, AbstractInitial<Derived, Equations>, NDIMS>::apply(
       sol.u_kokkos, element.node_coordinates_kokkos, initial_condition,
       mesh.get_num_cells(), n_dofs, NVARS);
@@ -143,9 +95,6 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_volume_integral(solution &sol) {
   std::size_t total_elements = mesh.get_nelem();
   VolumeFlux volume_integral{};
-  // for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
-  //   volume_integral(ielem, eq, sol.u, sol.du);
-  // }
 
   VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
       sol.u_kokkos, sol.du_kokkos, eq, volume_integral, mesh.get_num_cells());
@@ -160,12 +109,8 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   std::size_t total_elements = mesh.get_nelem();
   VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth,
                              total_elements);
-  // volume_integral.calc_alpha(total_elements, sol.u);
-  volume_integral.calc_alpha_kokkos(total_elements, sol.u_kokkos);
-  // for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
-  //   volume_integral(ielem, eq, sol.u, sol.du);
-  // }
 
+  volume_integral.calc_alpha_kokkos(total_elements, sol.u_kokkos);
   VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
       sol.u_kokkos, sol.du_kokkos, eq, volume_integral, mesh.get_num_cells());
 }
@@ -174,12 +119,6 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_interface_flux(solution &sol) {
-  // std::size_t total_elements = mesh.get_nelem();
-  // for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
-  //   InterfaceHelper<Basis, Equations, SurfaceFlux,
-  //                   ElementCache>::interface_flux(element, eq, ielem, sol.u,
-  //                                                 sol.surface_flux_value);
-  // }
 
   InterfaceFluxFunctor<
       value_type, Equations, Basis,
@@ -192,11 +131,6 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_surface_integral(solution &sol) {
-  // std::size_t total_elements = mesh.get_nelem();
-  // for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
-  //   SurfaceIntegral<Basis, Equations, ElementCache>::integral(
-  //       element, ielem, sol.du, sol.surface_flux_value);
-  // }
 
   SurfaceIntegralFunctor<Basis, Equations, ElementCache, NDIMS>::apply(
       sol.du_kokkos, sol.surface_flux_value_kokkos, eq, mesh.get_num_cells());
@@ -224,11 +158,6 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::apply_jacobian(solution &sol) {
-  // std::size_t total_elements = mesh.get_nelem();
-  // for (std::size_t ielem = 0; ielem < total_elements; ++ielem) {
-  //   JacobianProj<Basis, Equations, ElementCache>::apply(element, ielem,
-  //   sol.du);
-  // }
 
   JacobianProjFunctor<Basis, Equations, ElementCache, NDIMS>::apply(
       sol.du_kokkos, element.inverse_jacobian_kokkos, mesh.get_num_cells());
@@ -238,18 +167,17 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_rhs(solution &sol) {
-  // sol.du.fill(0.0); // Clear the residual before accumulation
+
   Kokkos::deep_copy(sol.du_kokkos, 0.0);
   calc_volume_integral(sol);
-  // sol.check_solution();
+
   calc_interface_flux(sol);
-  // sol.check_solution();
+
   apply_boundary_condition(sol);
-  // sol.check_solution();
+
   calc_surface_integral(sol);
-  // sol.check_solution();
+
   apply_jacobian(sol);
-  // sol.check_solution();
 }
 
 } // namespace DGSEM

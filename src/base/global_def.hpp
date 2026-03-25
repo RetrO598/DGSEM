@@ -16,6 +16,7 @@ struct solution_type_traits<T, 1> {
   using DataArray = Kokkos::View<T ***, Device>;
   using DataArrayHost = DataArray::HostMirror;
   using ElementArray = Kokkos::View<T *, Device>;
+  using ElementArrayHost = ElementArray::HostMirror;
 };
 
 template <std::size_t NDIMS>
@@ -24,6 +25,7 @@ struct index_type_traits {};
 template <>
 struct index_type_traits<1> {
   using IndexArray = Kokkos::View<std::size_t **, Device>;
+  using IndexArrayHost = IndexArray::HostMirror;
 };
 
 template <class T, std::size_t NDIMS>
@@ -32,5 +34,6 @@ struct jacobian_type_traits {};
 template <class T>
 struct jacobian_type_traits<T, 1> {
   using JacobianMatrix = Kokkos::View<T ****, Device>;
+  using JacobianMatrixHost = JacobianMatrix::HostMirror;
 };
 } // namespace DGSEM

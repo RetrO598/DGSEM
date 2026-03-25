@@ -1,12 +1,9 @@
 #pragma once
 
-#include "base/math_utils.hpp"
-#include "equations/buckley_leverett1D.hpp"
-#include "equations/compressible_euler1D.hpp"
-#include "equations/inviscid_burgers1D.hpp"
 #include <Kokkos_Macros.hpp>
 #include <algorithm>
 #include <array>
+#include <base/math_utils.hpp>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>

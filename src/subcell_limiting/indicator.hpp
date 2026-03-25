@@ -1,14 +1,10 @@
 #pragma once
 
-#include "equations/compressible_euler1D.hpp"
-#include "equations/equations_base.hpp"
 #include <array>
 #include <base/base.hpp>
 #include <cstddef>
 #include <equations/equations.hpp>
 #include <type_traits>
-#include <vector>
-#include <xtensor/core/xtensor_forward.hpp>
 
 namespace DGSEM {
 
@@ -36,12 +32,6 @@ struct IndicatorValueAccessor {
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename traits::value_type;
 
-  inline static value_type get_indicator_value(const xt::xarray<value_type> &u,
-                                               std::size_t ielem,
-                                               std::size_t inode) {
-    return u(ielem, inode, 0);
-  }
-
   template <class ArrayU>
   KOKKOS_INLINE_FUNCTION static value_type
   get_indicator_value(const ArrayU &u, std::size_t ielem, std::size_t inode) {
@@ -53,18 +43,6 @@ template <class T>
 struct IndicatorValueAccessor<equations::CompressibleEuler1D<T>> {
   using traits = equations::EquationTraits<equations::CompressibleEuler1D<T>>;
   using value_type = typename traits::value_type;
-
-  inline static value_type get_indicator_value(const xt::xarray<value_type> &u,
-                                               std::size_t ielem,
-                                               std::size_t inode) {
-    value_type rho = u(ielem, inode, 0);
-    value_type mom = u(ielem, inode, 1);
-    value_type rhoE = u(ielem, inode, 2);
-    value_type u_vel = mom / rho;
-    value_type gamma = 1.4;
-    value_type p = (gamma - 1.0) * (rhoE - 0.5 * rho * u_vel * u_vel);
-    return p * rho;
-  }
 
   template <class ArrayU>
   KOKKOS_INLINE_FUNCTION static value_type
@@ -152,67 +130,6 @@ struct HGIndicator {
 
           alpha(ielem) = alpha_e;
         });
-  }
-
-  std::vector<value_type> operator()(std::size_t nelem,
-                                     const xt::xarray<value_type> &u) {
-
-    std::vector<value_type> alpha(nelem, 0.0);
-    for (std::size_t ielem = 0; ielem < nelem; ++ielem) {
-      value_type alpha_element = 0.0;
-      std::array<value_type, Basis::NNodes> indicator_value{};
-      std::array<value_type, Basis::NNodes> modal{};
-      for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-        value_type u_node =
-            IndicatorValueAccessor<Equations>::get_indicator_value(u, ielem,
-                                                                   inode);
-        indicator_value[inode] = u_node;
-      }
-
-      multiply_scalar_dimensionwise<value_type, Basis::NNodes, 1>::calc(
-          modal, Basis::inverse_vandermonde_legendre, indicator_value);
-
-      value_type total_energy = 0.0;
-      for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-        total_energy += modal[inode] * modal[inode];
-      }
-
-      value_type total_energy_clip1 = 0.0;
-      for (std::size_t inode = 0; inode < Basis::NNodes - 1; ++inode) {
-        total_energy_clip1 += modal[inode] * modal[inode];
-      }
-      value_type total_energy_clip2 = 0.0;
-      for (std::size_t inode = 0; inode < Basis::NNodes - 2; ++inode) {
-        total_energy_clip2 += modal[inode] * modal[inode];
-      }
-
-      value_type energy_frac_1 =
-          (total_energy != 0)
-              ? (total_energy - total_energy_clip1) / total_energy
-              : value_type(0);
-      value_type energy_frac_2 =
-          (total_energy_clip1 != 0)
-              ? (total_energy_clip1 - total_energy_clip2) / total_energy_clip1
-              : value_type(0);
-
-      value_type energy = std::max(energy_frac_1, energy_frac_2);
-
-      alpha_element =
-          1.0 / (1.0 + std::exp(-s / threshold * (energy - threshold)));
-
-      if (alpha_element < alpha_min) {
-        alpha_element = value_type(0.0);
-      }
-
-      if (alpha_element > 1.0 - alpha_min) {
-        alpha_element = value_type(1.0);
-      }
-
-      alpha_element = std::min(alpha_max, alpha_element);
-      alpha[ielem] = alpha_element;
-    }
-
-    return alpha;
   }
 
 private:

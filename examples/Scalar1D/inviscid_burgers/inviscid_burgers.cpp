@@ -73,7 +73,7 @@ int main() {
     solver.initialize(initial, sol);
     std::cout << "solver.initialize() returned successfully." << std::endl;
 
-    using TimeIntegrator = DGSEM::SSPRK3_kokkos<double, Solver, Mesh, Solution>;
+    using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Mesh, Solution>;
     TimeIntegrator time_integrator(sol, mesh);
     const double t_final = 2.0;
     const double cfl = 0.1;
@@ -89,7 +89,7 @@ int main() {
     std::cout << "  t_final = " << t_final << std::endl;
 
     while (t < t_final) {
-      time_integrator.step_kokkos(solver, sol, dt);
+      time_integrator.step(solver, sol, dt);
       t += dt;
       iter++;
 
