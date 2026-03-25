@@ -85,7 +85,7 @@ int main() {
     using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Mesh, Solution>;
     TimeIntegrator time_integrator(sol, mesh);
     const double t_final = 1.8;
-    const double cfl = 0.05;
+    const double cfl = 0.1;
     const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
     const double dt = cfl * dx / 4.566;
     double t = 0.0;
@@ -113,7 +113,7 @@ int main() {
     std::ofstream nodes_file("nodes.txt", std::ios::out);
 
     auto u_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_kokkos);
+        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
 
     solution_kokkos_file << std::scientific << std::setprecision(16);
     nodes_file << std::scientific << std::setprecision(16);

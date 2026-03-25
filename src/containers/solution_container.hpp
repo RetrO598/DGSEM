@@ -20,23 +20,23 @@ struct SolutionInitializer<T, NVARS, 1> {
 
   KOKKOS_INLINE_FUNCTION constexpr static void
   initialize_u(std::size_t total_elements, std::size_t nnodes,
-               DataArray &u_kokkos) {
-    Kokkos::realloc(u_kokkos, total_elements, nnodes, NVARS);
-    Kokkos::deep_copy(u_kokkos, 0.0);
+               DataArray &u_device) {
+    Kokkos::realloc(u_device, total_elements, nnodes, NVARS);
+    Kokkos::deep_copy(u_device, 0.0);
   }
 
   KOKKOS_INLINE_FUNCTION constexpr static void
   initialize_du(std::size_t total_elements, std::size_t nnodes,
-                DataArray &du_kokkos) {
-    Kokkos::realloc(du_kokkos, total_elements, nnodes, NVARS);
-    Kokkos::deep_copy(du_kokkos, 0.0);
+                DataArray &du_device) {
+    Kokkos::realloc(du_device, total_elements, nnodes, NVARS);
+    Kokkos::deep_copy(du_device, 0.0);
   }
 
   KOKKOS_INLINE_FUNCTION constexpr static void
   initialize_surface_flux_value(std::size_t total_elements, std::size_t nnodes,
-                                DataArray &surface_kokkos) {
-    Kokkos::realloc(surface_kokkos, total_elements, 2, NVARS);
-    Kokkos::deep_copy(surface_kokkos, 0.0);
+                                DataArray &surface_device) {
+    Kokkos::realloc(surface_device, total_elements, 2, NVARS);
+    Kokkos::deep_copy(surface_device, 0.0);
   }
 };
 } // namespace detail
@@ -54,14 +54,14 @@ struct Solution {
   Solution(const Mesh &mesh) {
     std::size_t total_elements = mesh.get_nelem();
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_u(
-        total_elements, Basis::NNodes, u_kokkos);
+        total_elements, Basis::NNodes, u_device);
 
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_du(
-        total_elements, Basis::NNodes, du_kokkos);
+        total_elements, Basis::NNodes, du_device);
 
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::
         initialize_surface_flux_value(total_elements, Basis::NNodes,
-                                      surface_flux_value_kokkos);
+                                      surface_flux_value_device);
   }
 
   Solution() = default;
@@ -69,15 +69,15 @@ struct Solution {
   Solution clone_shape() const {
     Solution tmp;
 
-    clone_view_shape(tmp.u_kokkos, u_kokkos);
-    clone_view_shape(tmp.du_kokkos, du_kokkos);
-    clone_view_shape(tmp.surface_flux_value_kokkos, surface_flux_value_kokkos);
+    clone_view_shape(tmp.u_device, u_device);
+    clone_view_shape(tmp.du_device, du_device);
+    clone_view_shape(tmp.surface_flux_value_device, surface_flux_value_device);
 
     return tmp;
   }
 
-  DataArray u_kokkos;
-  DataArray du_kokkos;
-  DataArray surface_flux_value_kokkos;
+  DataArray u_device;
+  DataArray du_device;
+  DataArray surface_flux_value_device;
 };
 } // namespace DGSEM

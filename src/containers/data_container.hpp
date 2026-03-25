@@ -9,7 +9,6 @@
 #include <functional>
 #include <numeric>
 
-
 namespace DGSEM {
 template <class T, std::size_t NDIMS>
 struct StructuredElementContainer {
@@ -28,19 +27,19 @@ struct StructuredElementContainer {
   MatrixHost contravariant_vectors;
   DataArrayHost inverse_jacobian;
 
-  DataArray node_coordinates_kokkos;
-  IndexArray left_neighbors_kokkos;
-  Matrix jacobian_matrix_kokkos;
-  Matrix contravariant_vectors_kokkos;
-  DataArray inverse_jacobian_kokkos;
+  DataArray node_coordinates_device;
+  IndexArray left_neighbors_device;
+  Matrix jacobian_matrix_device;
+  Matrix contravariant_vectors_device;
+  DataArray inverse_jacobian_device;
 
   void sync_to_device() {
 
-    Kokkos::deep_copy(node_coordinates_kokkos, node_coordinates);
-    Kokkos::deep_copy(left_neighbors_kokkos, left_neighbors);
-    Kokkos::deep_copy(jacobian_matrix_kokkos, jacobian_matrix);
-    Kokkos::deep_copy(contravariant_vectors_kokkos, contravariant_vectors);
-    Kokkos::deep_copy(inverse_jacobian_kokkos, inverse_jacobian);
+    Kokkos::deep_copy(node_coordinates_device, node_coordinates);
+    Kokkos::deep_copy(left_neighbors_device, left_neighbors);
+    Kokkos::deep_copy(jacobian_matrix_device, jacobian_matrix);
+    Kokkos::deep_copy(contravariant_vectors_device, contravariant_vectors);
+    Kokkos::deep_copy(inverse_jacobian_device, inverse_jacobian);
   }
 };
 
@@ -61,14 +60,14 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
   KOKKOS_INLINE_FUNCTION constexpr static void
   resize(std::size_t tot_elems, StructuredElementContainer<T, 1> &container) {
 
-    Kokkos::realloc(container.node_coordinates_kokkos, tot_elems, Basis::NNodes,
+    Kokkos::realloc(container.node_coordinates_device, tot_elems, Basis::NNodes,
                     1);
-    Kokkos::realloc(container.left_neighbors_kokkos, tot_elems, 1);
-    Kokkos::realloc(container.jacobian_matrix_kokkos, tot_elems, Basis::NNodes,
+    Kokkos::realloc(container.left_neighbors_device, tot_elems, 1);
+    Kokkos::realloc(container.jacobian_matrix_device, tot_elems, Basis::NNodes,
                     1, 1);
-    Kokkos::realloc(container.contravariant_vectors_kokkos, tot_elems,
+    Kokkos::realloc(container.contravariant_vectors_device, tot_elems,
                     Basis::NNodes, 1, 1);
-    Kokkos::realloc(container.inverse_jacobian_kokkos, tot_elems, Basis::NNodes,
+    Kokkos::realloc(container.inverse_jacobian_device, tot_elems, Basis::NNodes,
                     1);
 
     Kokkos::realloc(container.node_coordinates, tot_elems, Basis::NNodes, 1);

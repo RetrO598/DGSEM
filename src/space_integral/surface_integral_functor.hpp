@@ -30,8 +30,8 @@ struct SurfaceIntegralFunctor {
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t &ielem) const
     requires(NDIMS == 1)
   {
-    SurfaceIntegral<Basis, Equations, Element>::integral_kokkos(ielem, du,
-                                                                surface_flux);
+    SurfaceIntegral<Basis, Equations, Element>::integral(ielem, du,
+                                                         surface_flux);
   }
 
   const Equations eq;

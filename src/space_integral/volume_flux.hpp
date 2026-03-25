@@ -19,8 +19,8 @@ struct VolumeIntegralWeak<T, NVARS, 1> {
 
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION static void
-  weak_form_kernel_kokkos(std::size_t ielem, const Equations &eq,
-                          const ArrayU &u, ArrayDu &du) {
+  weak_form_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
+                   ArrayDu &du) {
     for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
       std::array<T, NVARS> u_node;
       std::array<T, NVARS> flux;
@@ -48,8 +48,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 1> {
 
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION static void
-  split_form_kernel_kokkos(std::size_t ielem, const Equations &eq,
-                           const ArrayU &u, ArrayDu &du) {
+  split_form_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
+                    ArrayDu &du) {
     for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
       std::array<T, NVARS> u_node;
       for (std::size_t var = 0; var < NVARS; ++var) {
@@ -77,8 +77,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 1> {
 
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION static void
-  split_form_kernel_kokkos(std::size_t ielem, const Equations &eq,
-                           const ArrayU &u, ArrayDu &du, T alpha) {
+  split_form_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
+                    ArrayDu &du, T alpha) {
     for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
       std::array<T, NVARS> u_node;
       for (std::size_t var = 0; var < NVARS; ++var) {
@@ -113,8 +113,8 @@ struct FinitVolumeIntegral<T, NVARS, NumericFlux, 1> {
 
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION static void
-  fv_kernel_kokkos(std::size_t ielem, const Equations &eq, const ArrayU &u,
-                   ArrayDu &du, T alpha) {
+  fv_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
+            ArrayDu &du, T alpha) {
     std::array<std::array<T, NVARS>, Basis::NNodes + 1> fstar1_L{};
     std::array<std::array<T, NVARS>, Basis::NNodes + 1> fstar1_R{};
     for (std::size_t inode = 1; inode < Basis::NNodes; ++inode) {
@@ -157,7 +157,7 @@ struct VolumeIntegralWeakForm {
   KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations &eq,
                                          const ArrayU &u, ArrayDu &du) const {
     detail::VolumeIntegralWeak<value_type, NVARS, NDIMS>::
-        template weak_form_kernel_kokkos<Basis, Equations>(ielem, eq, u, du);
+        template weak_form_kernel<Basis, Equations>(ielem, eq, u, du);
   }
 };
 
@@ -172,10 +172,10 @@ struct VolumeIntegralSplitForm {
   template <class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations &eq,
                                          const ArrayU &u, ArrayDu &du) const {
-    detail::VolumeIntegralSplit<
-        value_type, NVARS, NumericFlux<Equations>,
-        NDIMS>::template split_form_kernel_kokkos<Basis, Equations>(ielem, eq,
-                                                                    u, du);
+    detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
+                                NDIMS>::template split_form_kernel<Basis,
+                                                                   Equations>(
+        ielem, eq, u, du);
   }
 };
 
@@ -205,7 +205,7 @@ struct VolumeIntegralShockCapturingHG
     alpha_view = AlphaView("alpha_view", total_elements_);
   }
 
-  inline void calc_alpha_kokkos(std::size_t nelem, DataArray u) {
+  inline void calc_alpha(std::size_t nelem, DataArray u) {
     indicator(nelem, u, alpha_view);
   }
 
@@ -216,19 +216,18 @@ struct VolumeIntegralShockCapturingHG
     bool dg_only = std::abs(alpha_ielem - 0.0) <= atol;
 
     if (dg_only) {
-      detail::VolumeIntegralSplit<
-          value_type, NVARS, NumericFlux<Equations>,
-          NDIMS>::template split_form_kernel_kokkos<Basis, Equations>(ielem, eq,
-                                                                      u, du);
+      detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
+                                  NDIMS>::template split_form_kernel<Basis,
+                                                                     Equations>(
+          ielem, eq, u, du);
     } else {
       detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
-                                  NDIMS>::
-          template split_form_kernel_kokkos<Basis, Equations>(
-              ielem, eq, u, du, (1.0 - alpha_ielem));
+                                  NDIMS>::template split_form_kernel<Basis,
+                                                                     Equations>(
+          ielem, eq, u, du, (1.0 - alpha_ielem));
 
       detail::FinitVolumeIntegral<value_type, NVARS, FvFlux<Equations>, NDIMS>::
-          template fv_kernel_kokkos<Basis, Equations>(ielem, eq, u, du,
-                                                      alpha_ielem);
+          template fv_kernel<Basis, Equations>(ielem, eq, u, du, alpha_ielem);
     }
   }
 

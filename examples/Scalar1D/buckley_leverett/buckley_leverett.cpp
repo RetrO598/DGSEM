@@ -104,7 +104,7 @@ int main() {
     std::ofstream nodes_file("nodes.txt", std::ios::out);
 
     auto u_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_kokkos);
+        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
 
     solution_kokkos_file << std::scientific << std::setprecision(16);
     nodes_file << std::scientific << std::setprecision(16);

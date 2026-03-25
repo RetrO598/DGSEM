@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <equations/equations.hpp>
 
-
 namespace DGSEM {
 
 template <class Basis, class Equations, class SurfaceFlux, class Element>
@@ -14,13 +13,15 @@ struct InterfaceHelper;
 template <class Basis, class Equations, class SurfaceFlux, class T>
 struct InterfaceHelper<Basis, Equations, SurfaceFlux,
                        StructuredElementContainer<T, 1>> {
+
   using traits = equations::EquationTraits<Equations>;
+
   constexpr static std::size_t NVARS = traits::NVARS;
+
   template <class IndexArray, class ArrayU, class ArrayFlux>
   KOKKOS_INLINE_FUNCTION static void
-  interface_flux_kokkos(const IndexArray &left_neighbors, const Equations &eq,
-                        std::size_t ielem, const ArrayU &u,
-                        ArrayFlux &surface_flux) {
+  interface_flux(const IndexArray &left_neighbors, const Equations &eq,
+                 std::size_t ielem, const ArrayU &u, ArrayFlux &surface_flux) {
     std::size_t left_elem = left_neighbors(ielem, 0);
     if (left_elem != static_cast<std::size_t>(-1)) {
       std::array<T, NVARS> u_ll{};

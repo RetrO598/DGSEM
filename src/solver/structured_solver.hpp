@@ -85,7 +85,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                solution &sol) {
 
   InitialFunctor<value_type, AbstractInitial<Derived, Equations>, NDIMS>::apply(
-      sol.u_kokkos, element.node_coordinates_kokkos, initial_condition,
+      sol.u_device, element.node_coordinates_device, initial_condition,
       mesh.get_num_cells(), n_dofs, NVARS);
 }
 
@@ -97,7 +97,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   VolumeFlux volume_integral{};
 
   VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
-      sol.u_kokkos, sol.du_kokkos, eq, volume_integral, mesh.get_num_cells());
+      sol.u_device, sol.du_device, eq, volume_integral, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -110,9 +110,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth,
                              total_elements);
 
-  volume_integral.calc_alpha_kokkos(total_elements, sol.u_kokkos);
+  volume_integral.calc_alpha(total_elements, sol.u_device);
   VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
-      sol.u_kokkos, sol.du_kokkos, eq, volume_integral, mesh.get_num_cells());
+      sol.u_device, sol.du_device, eq, volume_integral, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -123,8 +123,8 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   InterfaceFluxFunctor<
       value_type, Equations, Basis,
       InterfaceHelper<Basis, Equations, SurfaceFlux, ElementCache>,
-      NDIMS>::apply(element.left_neighbors_kokkos, eq, sol.u_kokkos,
-                    sol.surface_flux_value_kokkos, mesh.get_num_cells());
+      NDIMS>::apply(element.left_neighbors_device, eq, sol.u_device,
+                    sol.surface_flux_value_device, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -133,7 +133,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_surface_integral(solution &sol) {
 
   SurfaceIntegralFunctor<Basis, Equations, ElementCache, NDIMS>::apply(
-      sol.du_kokkos, sol.surface_flux_value_kokkos, eq, mesh.get_num_cells());
+      sol.du_device, sol.surface_flux_value_device, eq, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -145,11 +145,11 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   for (std::size_t i = 0; i < NDIMS; ++i) {
     boundary_set
         .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
-            mesh, eq, sol.u_kokkos, sol.surface_flux_value_kokkos, 2 * i, 0.0);
+            mesh, eq, sol.u_device, sol.surface_flux_value_device, 2 * i, 0.0);
 
     boundary_set
         .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
-            mesh, eq, sol.u_kokkos, sol.surface_flux_value_kokkos, 2 * i + 1,
+            mesh, eq, sol.u_device, sol.surface_flux_value_device, 2 * i + 1,
             0.0);
   }
 }
@@ -160,7 +160,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::apply_jacobian(solution &sol) {
 
   JacobianProjFunctor<Basis, Equations, ElementCache, NDIMS>::apply(
-      sol.du_kokkos, element.inverse_jacobian_kokkos, mesh.get_num_cells());
+      sol.du_device, element.inverse_jacobian_device, mesh.get_num_cells());
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -168,7 +168,7 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_rhs(solution &sol) {
 
-  Kokkos::deep_copy(sol.du_kokkos, 0.0);
+  Kokkos::deep_copy(sol.du_device, 0.0);
   calc_volume_integral(sol);
 
   calc_interface_flux(sol);

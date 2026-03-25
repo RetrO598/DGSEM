@@ -55,16 +55,15 @@ struct InterfaceFluxFunctor {
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t &ielem) const
     requires(NDIMS == 1)
   {
-    InterfaceHelper::interface_flux_kokkos(left_neighbors, eq, ielem, u,
-                                           surface_flux);
+    InterfaceHelper::interface_flux(left_neighbors, eq, ielem, u, surface_flux);
   }
 
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t &ielem,
                                          const std::size_t &jelem) const
     requires(NDIMS == 2)
   {
-    InterfaceHelper::interface_flux_kokkos(left_neighbors, eq, ielem, jelem, u,
-                                           surface_flux);
+    InterfaceHelper::interface_flux(left_neighbors, eq, ielem, jelem, u,
+                                    surface_flux);
   }
 
   IndexArray left_neighbors;
