@@ -16,11 +16,11 @@ struct VolumeIntegralWeak;
 
 template <class T, std::size_t NVARS>
 struct VolumeIntegralWeak<T, NVARS, 1> {
-
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION static void
-  weak_form_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
-                   ArrayDu &du) {
+  KOKKOS_INLINE_FUNCTION static void weak_form_kernel(std::size_t ielem,
+                                                      const Equations& eq,
+                                                      const ArrayU& u,
+                                                      ArrayDu& du) {
     for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
       std::array<T, NVARS> u_node;
       std::array<T, NVARS> flux;
@@ -45,11 +45,11 @@ struct VolumeIntegralSplit;
 
 template <class T, std::size_t NVARS, class NumericFlux>
 struct VolumeIntegralSplit<T, NVARS, NumericFlux, 1> {
-
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION static void
-  split_form_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
-                    ArrayDu &du) {
+  KOKKOS_INLINE_FUNCTION static void split_form_kernel(std::size_t ielem,
+                                                       const Equations& eq,
+                                                       const ArrayU& u,
+                                                       ArrayDu& du) {
     for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
       std::array<T, NVARS> u_node;
       for (std::size_t var = 0; var < NVARS; ++var) {
@@ -76,9 +76,10 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 1> {
   }
 
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION static void
-  split_form_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
-                    ArrayDu &du, T alpha) {
+  KOKKOS_INLINE_FUNCTION static void split_form_kernel(std::size_t ielem,
+                                                       const Equations& eq,
+                                                       const ArrayU& u,
+                                                       ArrayDu& du, T alpha) {
     for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
       std::array<T, NVARS> u_node;
       for (std::size_t var = 0; var < NVARS; ++var) {
@@ -110,11 +111,11 @@ struct FinitVolumeIntegral;
 
 template <class T, std::size_t NVARS, class NumericFlux>
 struct FinitVolumeIntegral<T, NVARS, NumericFlux, 1> {
-
   template <class Basis, class Equations, class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION static void
-  fv_kernel(std::size_t ielem, const Equations &eq, const ArrayU &u,
-            ArrayDu &du, T alpha) {
+  KOKKOS_INLINE_FUNCTION static void fv_kernel(std::size_t ielem,
+                                               const Equations& eq,
+                                               const ArrayU& u, ArrayDu& du,
+                                               T alpha) {
     std::array<std::array<T, NVARS>, Basis::NNodes + 1> fstar1_L{};
     std::array<std::array<T, NVARS>, Basis::NNodes + 1> fstar1_R{};
     for (std::size_t inode = 1; inode < Basis::NNodes; ++inode) {
@@ -143,7 +144,7 @@ struct FinitVolumeIntegral<T, NVARS, NumericFlux, 1> {
   }
 };
 
-} // namespace detail
+}  // namespace detail
 
 template <class Basis, class Equations>
 struct VolumeIntegralWeakForm {
@@ -154,8 +155,8 @@ struct VolumeIntegralWeakForm {
   constexpr static std::size_t NVARS = traits::NVARS;
 
   template <class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations &eq,
-                                         const ArrayU &u, ArrayDu &du) const {
+  KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations& eq,
+                                         const ArrayU& u, ArrayDu& du) const {
     detail::VolumeIntegralWeak<value_type, NVARS, NDIMS>::
         template weak_form_kernel<Basis, Equations>(ielem, eq, u, du);
   }
@@ -170,8 +171,8 @@ struct VolumeIntegralSplitForm {
   constexpr static std::size_t NVARS = traits::NVARS;
 
   template <class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations &eq,
-                                         const ArrayU &u, ArrayDu &du) const {
+  KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations& eq,
+                                         const ArrayU& u, ArrayDu& du) const {
     detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
                                 NDIMS>::template split_form_kernel<Basis,
                                                                    Equations>(
@@ -198,20 +199,29 @@ struct VolumeIntegralShockCapturingHG
 
   VolumeIntegralShockCapturingHG(value_type alpha_max_, value_type alpha_min_,
                                  bool alpha_smooth_,
-                                 std::size_t total_elements_)
+                                 const std::array<std::size_t, NDIMS>& n_cells_)
       : indicator(alpha_max_, alpha_min_, alpha_smooth_) {
     value_type eps_val = std::numeric_limits<value_type>::epsilon();
     atol = std::max(100.0 * eps_val, std::pow(eps_val, 0.75));
-    alpha_view = AlphaView("alpha_view", total_elements_);
+
+    if constexpr (AlphaView::rank == 1) {
+      alpha_view = AlphaView("alpha_view", n_cells_[0]);
+    } else if constexpr (AlphaView::rank == 2) {
+      alpha_view = AlphaView("alpha_view", n_cells_[1], n_cells_[0]);
+    } else if constexpr (AlphaView::rank == 3) {
+      alpha_view =
+          AlphaView("alpha_view", n_cells_[2], n_cells_[1], n_cells_[0]);
+    }
   }
 
-  inline void calc_alpha(std::size_t nelem, DataArray u) {
-    indicator(nelem, u, alpha_view);
+  inline void calc_alpha(const std::array<std::size_t, NDIMS>& n_cells,
+                         DataArray u) {
+    indicator(n_cells, u, alpha_view);
   }
 
   template <class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations &eq,
-                                         const ArrayU &u, ArrayDu &du) const {
+  KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations& eq,
+                                         const ArrayU& u, ArrayDu& du) const {
     value_type alpha_ielem = alpha_view(ielem);
     bool dg_only = std::abs(alpha_ielem - 0.0) <= atol;
 
@@ -231,10 +241,10 @@ struct VolumeIntegralShockCapturingHG
     }
   }
 
-private:
+ private:
   Indicator indicator;
   std::vector<value_type> alpha;
   AlphaView alpha_view;
   value_type atol;
 };
-} // namespace DGSEM
+}  // namespace DGSEM

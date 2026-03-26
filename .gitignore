@@ -4,3 +4,7 @@
 *.py
 /build
 /.cache
+*.png
+.clangd
+*.txt
+!CMakeLists.txt
