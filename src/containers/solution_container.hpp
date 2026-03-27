@@ -18,28 +18,28 @@ struct SolutionInitializer<T, NVARS, 1> {
   using DataArray = solution_type_traits<T, 1>::DataArray;
   using DataArrayHost = solution_type_traits<T, 1>::DataArrayHost;
 
-  KOKKOS_INLINE_FUNCTION constexpr static void initialize_u(
-      const std::array<std::size_t, 1>& n_cells, std::size_t nnodes,
-      DataArray& u_device) {
+  inline constexpr static void
+  initialize_u(const std::array<std::size_t, 1> &n_cells, std::size_t nnodes,
+               DataArray &u_device) {
     Kokkos::realloc(u_device, n_cells[0], nnodes, NVARS);
     Kokkos::deep_copy(u_device, 0.0);
   }
 
-  KOKKOS_INLINE_FUNCTION constexpr static void initialize_du(
-      const std::array<std::size_t, 1>& n_cells, std::size_t nnodes,
-      DataArray& du_device) {
+  inline constexpr static void
+  initialize_du(const std::array<std::size_t, 1> &n_cells, std::size_t nnodes,
+                DataArray &du_device) {
     Kokkos::realloc(du_device, n_cells[0], nnodes, NVARS);
     Kokkos::deep_copy(du_device, 0.0);
   }
 
-  KOKKOS_INLINE_FUNCTION constexpr static void initialize_surface_flux_value(
-      const std::array<std::size_t, 1>& n_cells, std::size_t nnodes,
-      DataArray& surface_device) {
+  inline constexpr static void
+  initialize_surface_flux_value(const std::array<std::size_t, 1> &n_cells,
+                                std::size_t nnodes, DataArray &surface_device) {
     Kokkos::realloc(surface_device, n_cells[0], 2, NVARS);
     Kokkos::deep_copy(surface_device, 0.0);
   }
 };
-}  // namespace detail
+} // namespace detail
 
 template <class Mesh, class Basis, class Equations>
 struct Solution {
@@ -51,7 +51,7 @@ struct Solution {
   using DataArray = solution_type_traits<value_type, NDIMS>::DataArray;
   using DataArrayHost = solution_type_traits<value_type, NDIMS>::DataArrayHost;
 
-  Solution(const Mesh& mesh) {
+  Solution(const Mesh &mesh) {
     auto n_cells = mesh.get_num_cells();
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_u(
         n_cells, Basis::NNodes, u_device);
@@ -80,4 +80,4 @@ struct Solution {
   DataArray du_device;
   DataArray surface_flux_value_device;
 };
-}  // namespace DGSEM
+} // namespace DGSEM

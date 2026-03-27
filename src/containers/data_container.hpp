@@ -6,6 +6,7 @@
 #include <base/base.hpp>
 #include <cstddef>
 #include <equations/equations.hpp>
+#include <iostream>
 
 namespace DGSEM {
 template <class T, std::size_t NDIMS>
@@ -52,9 +53,9 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
   using Matrix = jacobian_type_traits<T, 1>::JacobianMatrix;
   using MatrixHost = jacobian_type_traits<T, 1>::JacobianMatrixHost;
 
-  KOKKOS_INLINE_FUNCTION constexpr static void resize(
-      const std::array<std::size_t, 1>& n_cells,
-      StructuredElementContainer<T, 1>& container) {
+  inline constexpr static void
+  resize(const std::array<std::size_t, 1> &n_cells,
+         StructuredElementContainer<T, 1> &container) {
     Kokkos::realloc(container.node_coordinates_device, n_cells[0],
                     Basis::NNodes, 1);
     Kokkos::realloc(container.left_neighbors_device, n_cells[0], 1);
@@ -73,9 +74,9 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
     Kokkos::realloc(container.inverse_jacobian, n_cells[0], Basis::NNodes, 1);
   }
 
-  KOKKOS_INLINE_FUNCTION constexpr static void calc_node_coordinates(
-      const std::array<std::size_t, 1>& n_cells, DataArrayHost& coordinates,
-      const Mapping& mapping) {
+  inline constexpr static void
+  calc_node_coordinates(const std::array<std::size_t, 1> &n_cells,
+                        DataArrayHost &coordinates, const Mapping &mapping) {
     T dx = 2.0 / n_cells[0];
 
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
@@ -83,28 +84,29 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
 
       for (std::size_t i = 0; i < Basis::NNodes; ++i) {
         coordinates(ielem, i, 0) =
-            mapping.eval(cell_x_offset + 0.5 * dx * Basis::nodes[i]);
+            mapping.eval(cell_x_offset + 0.5 * dx * Basis::nodes_host[i]);
       }
     }
   }
 
-  KOKKOS_INLINE_FUNCTION constexpr static void calc_jacobian_matrix(
-      const std::array<std::size_t, 1>& n_cells, MatrixHost& jacobian,
-      const DataArrayHost& coordinates) {
+  inline constexpr static void
+  calc_jacobian_matrix(const std::array<std::size_t, 1> &n_cells,
+                       MatrixHost &jacobian, const DataArrayHost &coordinates) {
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
       for (std::size_t i = 0; i < Basis::NNodes; ++i) {
         T tmp = 0.0;
         for (std::size_t j = 0; j < Basis::NNodes; ++j) {
-          tmp += Basis::derivative_matrix(i, j) * coordinates(ielem, j, 0);
+          tmp += Basis::derivative_host(i, j) * coordinates(ielem, j, 0);
         }
         jacobian(ielem, i, 0, 0) = tmp;
       }
     }
   }
 
-  KOKKOS_INLINE_FUNCTION constexpr static void calc_inverse_jacobian(
-      const std::array<std::size_t, 1>& n_cells,
-      DataArrayHost& inverse_jacobian, const MatrixHost& jacobian) {
+  inline constexpr static void
+  calc_inverse_jacobian(const std::array<std::size_t, 1> &n_cells,
+                        DataArrayHost &inverse_jacobian,
+                        const MatrixHost &jacobian) {
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
       for (std::size_t i = 0; i < Basis::NNodes; ++i) {
         inverse_jacobian(ielem, i, 0) = 1.0 / jacobian(ielem, i, 0, 0);
@@ -112,9 +114,10 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
     }
   }
 
-  KOKKOS_INLINE_FUNCTION constexpr static void initialize_left_neighbor(
-      const std::array<std::size_t, 1>& n_cells, IndexArrayHost& left_neighbors,
-      const std::array<bool, 1>& periodic) {
+  inline constexpr static void
+  initialize_left_neighbor(const std::array<std::size_t, 1> &n_cells,
+                           IndexArrayHost &left_neighbors,
+                           const std::array<bool, 1> &periodic) {
     for (std::size_t i = 1; i < n_cells[0]; ++i) {
       left_neighbors(i, 0) = i - 1;
     }
@@ -126,17 +129,17 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
     }
   }
 };
-}  // namespace detail
+} // namespace detail
 
 template <class T, class Basis, class Mapping, std::size_t NDIMS>
 struct StructuredElementInitializer {
   StructuredElementInitializer(Mapping mapping_,
-                               const std::array<bool, NDIMS>& periodic_)
+                               const std::array<bool, NDIMS> &periodic_)
       : mapping(mapping_), periodic(periodic_) {}
 
-  constexpr void init_elements(
-      const std::array<std::size_t, NDIMS>& n_cells,
-      StructuredElementContainer<T, NDIMS>& container) {
+  constexpr void
+  init_elements(const std::array<std::size_t, NDIMS> &n_cells,
+                StructuredElementContainer<T, NDIMS> &container) {
     container.nelements = n_cells;
 
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::resize(
@@ -148,7 +151,7 @@ struct StructuredElementInitializer {
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         calc_jacobian_matrix(n_cells, container.jacobian_matrix,
                              container.node_coordinates);
-
+    std::cout << "1" << "\n";
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         calc_inverse_jacobian(n_cells, container.inverse_jacobian,
                               container.jacobian_matrix);
@@ -160,4 +163,4 @@ struct StructuredElementInitializer {
   Mapping mapping;
   std::array<bool, NDIMS> periodic;
 };
-}  // namespace DGSEM
+} // namespace DGSEM

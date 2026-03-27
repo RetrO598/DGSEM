@@ -20,9 +20,9 @@ int main() {
         DGSEM::HGIndicator<MyBasis, Eq>>;
 
     MyBasis::initialize();
-    auto dirichFunc = KOKKOS_LAMBDA(
-                          const std::array<double, 1>& coordinate,
-                          double time) {
+
+    auto dirichFunc =
+        KOKKOS_LAMBDA(const std::array<double, 1> &coordinate, double time) {
       double x = coordinate[0];
       double rho, u, p;
       if (x < -4.0) {

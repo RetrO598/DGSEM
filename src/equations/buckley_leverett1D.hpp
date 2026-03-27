@@ -27,6 +27,7 @@ public:
             (4.0 * u[0] * u[0] + (1.0 - u[0]) * (1.0 - u[0]))};
   }
 
+  KOKKOS_INLINE_FUNCTION
   T get_wave_speed() const { return 2.35; }
 };
 } // namespace equations

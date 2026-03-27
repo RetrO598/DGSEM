@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ========================
-# 用户可选 backend 开关
+# backend 开关
 # ========================
-option(ENABLE_CUDA "Enable CUDA backend" OFF)
-option(ENABLE_OPENMP "Enable OpenMP backend" ON)
+option(ENABLE_CUDA "Enable CUDA backend" ON)
+option(ENABLE_OPENMP "Enable OpenMP backend" OFF)
 option(ENABLE_SERIAL "Enable Serial backend" ON)
 
 if(NOT ENABLE_CUDA AND NOT ENABLE_OPENMP AND NOT ENABLE_SERIAL)
@@ -14,9 +14,13 @@ if(NOT ENABLE_CUDA AND NOT ENABLE_OPENMP AND NOT ENABLE_SERIAL)
 endif()
 
 # ========================
-# project（必须在语言确定后）
+# ⚠️ CUDA 编译器必须在 project 前设置
 # ========================
 if(ENABLE_CUDA)
+    set(CMAKE_C_COMPILER gcc-12)
+    set(CMAKE_CXX_COMPILER g++-12)
+    set(CMAKE_CUDA_HOST_COMPILER g++-12)
+    set(CMAKE_CUDA_COMPILER nvcc)
     project(DGSEM LANGUAGES CXX CUDA)
 else()
     project(DGSEM LANGUAGES CXX)
@@ -29,40 +33,41 @@ set(CMAKE_EXTENSIONS OFF)
 if(ENABLE_CUDA)
     set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr --expt-extended-lambda>
-    )
 endif()
 
 # ========================
-# Kokkos
+# 清除旧 Kokkos 变量
 # ========================
-find_package(Kokkos CONFIG QUIET)
+unset(Kokkos_DEVICES CACHE)
+unset(Kokkos_OPTIONS CACHE)
 
-if(NOT Kokkos_FOUND)
-    message(STATUS "Kokkos not found. Fetching...")
+# ========================
+# Kokkos（强制 Fetch）
+# ========================
+include(FetchContent)
 
-    include(FetchContent)
+set(Kokkos_ENABLE_CUDA    ${ENABLE_CUDA}   CACHE BOOL "" FORCE)
+set(Kokkos_ENABLE_OPENMP  ${ENABLE_OPENMP} CACHE BOOL "" FORCE)
+set(Kokkos_ENABLE_SERIAL  ${ENABLE_SERIAL} CACHE BOOL "" FORCE)
 
-    set(Kokkos_ENABLE_CUDA ${ENABLE_CUDA} CACHE BOOL "" FORCE)
-    set(Kokkos_ENABLE_OPENMP ${ENABLE_OPENMP} CACHE BOOL "" FORCE)
-    set(Kokkos_ENABLE_SERIAL ${ENABLE_SERIAL} CACHE BOOL "" FORCE)
+if(ENABLE_CUDA)
+    set(CMAKE_CUDA_STANDARD 20)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-    if(ENABLE_CUDA)
-        # 可由 -D 覆盖
-        set(Kokkos_ARCH_AMPERE86 ON CACHE BOOL "" FORCE)
-    endif()
-
-    FetchContent_Declare(
-        Kokkos
-        URL https://github.com/kokkos/kokkos/archive/refs/tags/4.4.01.tar.gz
+    set(CMAKE_CUDA_FLAGS
+        "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr --expt-extended-lambda"
     )
-    FetchContent_MakeAvailable(Kokkos)
+    set(Kokkos_ARCH_AMPERE86 ON CACHE BOOL "" FORCE)
 endif()
 
+FetchContent_Declare(
+    Kokkos
+    URL https://github.com/kokkos/kokkos/archive/refs/tags/4.4.01.tar.gz
+)
+FetchContent_MakeAvailable(Kokkos)
+
 # ========================
-# 打印 backend 信息
+# backend info
 # ========================
 message(STATUS "Backend configuration:")
 message(STATUS "  CUDA   : ${ENABLE_CUDA}")
@@ -70,7 +75,7 @@ message(STATUS "  OpenMP : ${ENABLE_OPENMP}")
 message(STATUS "  Serial : ${ENABLE_SERIAL}")
 
 # ========================
-# 你的库
+# dgsem
 # ========================
 add_library(dgsem INTERFACE)
 
@@ -79,5 +84,11 @@ target_include_directories(dgsem
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
 
 target_link_libraries(dgsem INTERFACE Kokkos::kokkos)
+
+if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
+  add_compile_options(
+    --expt-relaxed-constexpr
+    --expt-extended-lambda)
+endif()
 
 add_subdirectory(examples)

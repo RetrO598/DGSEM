@@ -1,5 +1,7 @@
 #pragma once
 
+#include "base/container_fixed.hpp"
+#include <array>
 #include <cstddef>
 #include <polynomial_basis/basis_detail.hpp>
 #include <span>
@@ -9,11 +11,11 @@ namespace Basis {
 
 template <class T, std::size_t Polydeg>
 class LobattoLegendreBasis {
- public:
+public:
   static constexpr std::size_t NNodes = Polydeg + 1;
 
-  using View1D = Kokkos::View<T*, Device>;
-  using View2D = Kokkos::View<T**, Device>;
+  using View1D = Kokkos::View<T *, Device>;
+  using View2D = Kokkos::View<T **, Device>;
 
   struct DeviceData {
     static constexpr std::size_t NNodes = Polydeg + 1;
@@ -41,8 +43,12 @@ class LobattoLegendreBasis {
   inline static View2D derivative_dhat;
   inline static View2D inverse_vandermonde_legendre;
 
+  inline static std::array<T, NNodes> nodes_host;
+  inline static Mat<T, NNodes, NNodes> derivative_host;
+
   static void initialize() {
-    if (nodes.is_allocated()) return;
+    if (nodes.is_allocated())
+      return;
 
     auto data_host = detail::GLL::gauss_lobatto_nodes_weights<T, NNodes>();
 
@@ -66,6 +72,7 @@ class LobattoLegendreBasis {
 
     for (std::size_t i = 0; i < NNodes; ++i) {
       nodes_h(i) = data_host.nodes[i];
+      nodes_host[i] = data_host.nodes[i];
       weights_h(i) = data_host.weights[i];
       inv_weights_h(i) = data_host.inv_weights[i];
     }
@@ -104,8 +111,9 @@ class LobattoLegendreBasis {
     for (std::size_t i = 0; i < NNodes; ++i) {
       for (std::size_t j = 0; j < NNodes; ++j) {
         dm_h(i, j) = dm_data(i, j);
+        derivative_host(i, j) = dm_data(i, j);
         ds_h(i, j) = ds_data(i, j);
-        dst_h(i, j) = ds_data(j, i);  // Transpose
+        dst_h(i, j) = ds_data(j, i); // Transpose
         dd_h(i, j) = dd_data(i, j);
         ivl_h(i, j) = ivl_data(i, j);
       }
@@ -152,5 +160,5 @@ class LobattoLegendreBasis {
   LobattoLegendreBasis() = delete;
 };
 
-}  // namespace Basis
-}  // namespace DGSEM
+} // namespace Basis
+} // namespace DGSEM
