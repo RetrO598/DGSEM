@@ -66,14 +66,17 @@ template <class Basis, class Equations>
 struct HGIndicator<Basis, Equations, 1> {
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename equations::EquationTraits<Equations>::value_type;
+  using BasisData = typename Basis::DeviceData;
   constexpr static std::size_t NDIMS = traits::NDIMS;
 
   HGIndicator() = delete;
 
-  HGIndicator(value_type alpha_max_, value_type alpha_min_, bool alpha_smooth_)
+  HGIndicator(value_type alpha_max_, value_type alpha_min_, bool alpha_smooth_,
+              BasisData basis_data_)
       : alpha_max(alpha_max_),
         alpha_min(alpha_min_),
-        alpha_smooth(alpha_smooth_) {
+        alpha_smooth(alpha_smooth_),
+        basis_data(basis_data_) {
     threshold = 0.5 * std::pow(10.0, -1.8 * std::pow(Basis::NNodes, 0.25));
     s = std::log((1.0 - 0.0001) / 0.0001);
   }
@@ -85,6 +88,7 @@ struct HGIndicator<Basis, Equations, 1> {
     auto alpha_min_ = alpha_min;
     auto threshold_ = threshold;
     auto s_ = s;
+    auto basis_ = basis_data;
     Kokkos::parallel_for(
         "HGIndicator", Kokkos::RangePolicy<>(0, n_cells[0]),
         KOKKOS_LAMBDA(const int ielem) {
@@ -100,7 +104,7 @@ struct HGIndicator<Basis, Equations, 1> {
 
           // 2. modal transform
           multiply_scalar_dimensionwise<value_type, Basis::NNodes, 1>::calc(
-              modal, Basis::inverse_vandermonde_legendre, indicator);
+              modal, basis_.inverse_vandermonde_legendre, indicator);
 
           // 3. energy
           value_type total = 0;
@@ -137,6 +141,7 @@ struct HGIndicator<Basis, Equations, 1> {
   value_type alpha_max = 0.5;
   value_type alpha_min = 0.001;
   bool alpha_smooth = false;
+  BasisData basis_data;
 
   value_type threshold;
   value_type s;

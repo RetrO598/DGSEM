@@ -13,10 +13,14 @@ struct SurfaceIntegralFunctor {
   using traits = equations::EquationTraits<Equations>;
   using T = typename traits::value_type;
   using DataArray = typename solution_type_traits<T, NDIMS>::DataArray;
+  using BasisData = typename Basis::DeviceData;
 
   SurfaceIntegralFunctor(DataArray du_, DataArray surface_flux_,
                          const Equations& eq_)
-      : du(du_), surface_flux(surface_flux_), eq(eq_) {}
+      : du(du_),
+        surface_flux(surface_flux_),
+        eq(eq_),
+        basis_data(Basis::device_data()) {}
 
   static void apply(DataArray u_, DataArray surface_flux_, const Equations& eq_,
                     std::array<std::size_t, NDIMS> n_elems_)
@@ -30,12 +34,14 @@ struct SurfaceIntegralFunctor {
     requires(NDIMS == 1)
   {
     SurfaceIntegral<Basis, Equations, Element>::integral(ielem, du,
-                                                         surface_flux);
+                                                         surface_flux,
+                                                         basis_data);
   }
 
   const Equations eq;
   DataArray du;
   DataArray surface_flux;
+  BasisData basis_data;
 };
 
 }  // namespace DGSEM

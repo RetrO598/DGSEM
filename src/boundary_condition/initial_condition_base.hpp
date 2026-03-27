@@ -7,7 +7,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <equations/equations.hpp>
-#include <iostream>
 #include <numbers>
 
 namespace DGSEM {
@@ -21,6 +20,7 @@ public:
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
+  KOKKOS_INLINE_FUNCTION
   std::array<value_type, NVARS>
   get_initial(std::array<value_type, NDIMS> coord) const {
     return static_cast<const Derived *>(this)->operator()(coord);
@@ -46,7 +46,6 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIM> coordinate) const {
-    std::cout << "doing uniform initialization." << "\n";
     return initial_vars;
   }
 

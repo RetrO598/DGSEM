@@ -15,6 +15,21 @@ class LobattoLegendreBasis {
   using View1D = Kokkos::View<T*, Device>;
   using View2D = Kokkos::View<T**, Device>;
 
+  struct DeviceData {
+    static constexpr std::size_t NNodes = Polydeg + 1;
+
+    View1D nodes;
+    View1D weights;
+    View1D inv_weights;
+    View1D boundary_interpolation_left;
+    View1D boundary_interpolation_right;
+    View2D derivative_matrix;
+    View2D derivative_split;
+    View2D derivative_split_transpose;
+    View2D derivative_dhat;
+    View2D inverse_vandermonde_legendre;
+  };
+
   inline static View1D nodes;
   inline static View1D weights;
   inline static View1D inv_weights;
@@ -119,6 +134,19 @@ class LobattoLegendreBasis {
     derivative_split_transpose = View2D();
     derivative_dhat = View2D();
     inverse_vandermonde_legendre = View2D();
+  }
+
+  static DeviceData device_data() {
+    return DeviceData{nodes,
+                      weights,
+                      inv_weights,
+                      boundary_interpolation_left,
+                      boundary_interpolation_right,
+                      derivative_matrix,
+                      derivative_split,
+                      derivative_split_transpose,
+                      derivative_dhat,
+                      inverse_vandermonde_legendre};
   }
 
   LobattoLegendreBasis() = delete;
