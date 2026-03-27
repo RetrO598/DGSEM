@@ -8,7 +8,6 @@
 #include <concepts>
 #include <containers/containers.hpp>
 #include <cstddef>
-#include <decl/Kokkos_Declare_OPENMP.hpp>
 #include <equations/equations.hpp>
 #include <space_integral/space_integral.hpp>
 

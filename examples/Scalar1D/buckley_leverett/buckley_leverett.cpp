@@ -1,7 +1,3 @@
-#include "base/numerical_flux.hpp"
-#include "boundary_condition/initial_condition_base.hpp"
-#include "equations/buckley_leverett1D.hpp"
-#include "space_integral/volume_flux.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <cstddef>
@@ -23,8 +19,8 @@ int main() {
         DGSEM::VolumeIntegralShockCapturingHG<MyBasis, Eq, DGSEM::CentralFlux,
                                               DGSEM::LaxFriedrichsFlux,
                                               DGSEM::HGIndicator<MyBasis, Eq>>;
-
-    auto dirichFunc = [](const std::array<double, 1> &coordinate, double time) {
+    MyBasis::initialize();
+    auto dirichFunc = [](const std::array<double, 1>& coordinate, double time) {
       double x = coordinate[0];
       double u = 0.0;
       if (x > -0.5 && x < 0.0) {
@@ -120,6 +116,8 @@ int main() {
     nodes_file.close();
     std::cout << "Final solution saved to solution.txt and nodes.txt"
               << std::endl;
+
+    MyBasis::finalize();
   }
   Kokkos::finalize();
   return 0;

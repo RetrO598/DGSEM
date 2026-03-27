@@ -3,9 +3,7 @@
 #include <array>
 #include <containers/containers.hpp>
 #include <cstddef>
-#include <decl/Kokkos_Declare_OPENMP.hpp>
 #include <equations/equations.hpp>
-
 
 namespace DGSEM {
 template <class Basis, class Equations, class Element>
@@ -41,7 +39,7 @@ struct JacobianProjFunctor {
     Kokkos::parallel_for("jacobian_proj", n_elems_[0], functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t &ielem) const
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const
     requires(NDIMS == 1)
   {
     for (std::size_t i = 0; i < Basis::NNodes; ++i) {
@@ -55,4 +53,4 @@ struct JacobianProjFunctor {
   DataArray du;
   DataArray inverse_jacobian;
 };
-} // namespace DGSEM
+}  // namespace DGSEM

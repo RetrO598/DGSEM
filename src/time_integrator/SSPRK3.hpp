@@ -4,7 +4,6 @@
 #include <array>
 #include <base/base.hpp>
 #include <cstddef>
-#include <decl/Kokkos_Declare_OPENMP.hpp>
 #include <time_integrator/integrator_base.hpp>
 
 namespace DGSEM {
@@ -20,7 +19,13 @@ struct parallel_ma3 {
 
   parallel_ma3(DataArray u1_, DataArray u2_, DataArray u3_, DataArray du_, T a1,
                T a2, T a3, std::size_t n_dofs_)
-      : u1(u1_), u2(u2_), u3(u3_), du(du_), a1(a1), a2(a2), a3(a3),
+      : u1(u1_),
+        u2(u2_),
+        u3(u3_),
+        du(du_),
+        a1(a1),
+        a2(a2),
+        a3(a3),
         n_dofs(n_dofs_) {}
 
   static void apply(DataArray u1_, DataArray u2_, DataArray u3_, DataArray du_,
@@ -33,7 +38,7 @@ struct parallel_ma3 {
     Kokkos::parallel_for("parallel_ma", n_elems_[0], functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t &ielem) const
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const
     requires(NDIMS == 1)
   {
     for (std::size_t inode = 0; inode < n_dofs; ++inode) {
@@ -76,7 +81,7 @@ struct parallel_ma2 {
     Kokkos::parallel_for("parallel_ma", n_elems_[0], functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t &ielem) const
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const
     requires(NDIMS == 1)
   {
     for (std::size_t inode = 0; inode < n_dofs; ++inode) {
@@ -96,13 +101,12 @@ struct parallel_ma2 {
 
 template <class T, class Solver, class Mesh, class Solution>
 class SSPRK3 : public TimeIntegrator<T, Solver, Solution> {
-public:
+ public:
   using Equations = typename Solver::EquationType;
-  explicit SSPRK3(const Solution &sol, const Mesh &mesh_)
-      : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()), mesh(mesh_){};
+  explicit SSPRK3(const Solution& sol, const Mesh& mesh_)
+      : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()), mesh(mesh_) {};
 
-  void step(Solver &solver, Solution &sol, T dt) override {
-
+  void step(Solver& solver, Solution& sol, T dt) override {
     solver.calc_rhs(sol);
 
     parallel_ma2<Equations>::apply(tmp1.u_device, sol.u_device, sol.du_device,
@@ -122,9 +126,9 @@ public:
         2.0 / 3.0, 2.0 / 3.0 * dt, solver.get_ndofs(), mesh.get_num_cells());
   }
 
-private:
+ private:
   Solution tmp1;
   Solution tmp2;
-  const Mesh &mesh;
+  const Mesh& mesh;
 };
-} // namespace DGSEM
+}  // namespace DGSEM

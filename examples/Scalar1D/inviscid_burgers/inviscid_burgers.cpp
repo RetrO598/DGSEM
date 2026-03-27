@@ -1,7 +1,3 @@
-#include "base/numerical_flux.hpp"
-#include "boundary_condition/initial_condition_base.hpp"
-#include "equations/inviscid_burgers1D.hpp"
-#include "space_integral/volume_flux.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <cmath>
@@ -14,10 +10,8 @@
 #include <numbers>
 
 int main() {
-
   Kokkos::initialize();
   {
-
     using Eq = DGSEM::equations::InviscidBurgers1D<double>;
     using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 4>;
 
@@ -27,8 +21,8 @@ int main() {
         DGSEM::VolumeIntegralShockCapturingHG<MyBasis, Eq, DGSEM::CentralFlux,
                                               DGSEM::LaxFriedrichsFlux,
                                               DGSEM::HGIndicator<MyBasis, Eq>>;
-
-    auto dirichFunc = [](const std::array<double, 1> &coordinate, double time) {
+    MyBasis::initialize();
+    auto dirichFunc = [](const std::array<double, 1>& coordinate, double time) {
       double x = coordinate[0];
       double u = 0.0;
       u = std::sin(2.0 * std::numbers::pi * x);
@@ -121,6 +115,8 @@ int main() {
     nodes_file.close();
     std::cout << "Final solution saved to solution.txt and nodes.txt"
               << std::endl;
+
+    MyBasis::finalize();
   }
   Kokkos::finalize();
   return 0;

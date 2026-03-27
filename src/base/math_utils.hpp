@@ -1,8 +1,8 @@
 #pragma once
+#include <Kokkos_Core.hpp>
 #include <cmath>
 #include <type_traits>
 
-#include "Kokkos_Macros.hpp"
 
 namespace DGSEM {
 

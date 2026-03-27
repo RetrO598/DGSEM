@@ -1,7 +1,3 @@
-#include "base/numerical_flux.hpp"
-#include "boundary_condition/initial_condition_base.hpp"
-#include "equations/compressible_euler1D.hpp"
-#include "space_integral/volume_flux.hpp"
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -22,8 +18,8 @@ int main() {
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::HLLCFlux,
         DGSEM::HGIndicator<MyBasis, Eq>>;
-
-    auto dirichFunc = [](const std::array<double, 1> &coordinate, double time) {
+    MyBasis::initialize();
+    auto dirichFunc = [](const std::array<double, 1>& coordinate, double time) {
       double x = coordinate[0];
       double rho, u, p;
       if (x < 0.5) {
@@ -122,6 +118,8 @@ int main() {
     nodes_file.close();
     std::cout << "Final solution saved to solution.txt and nodes.txt"
               << std::endl;
+
+    MyBasis::finalize();
   }
   Kokkos::finalize();
   return 0;

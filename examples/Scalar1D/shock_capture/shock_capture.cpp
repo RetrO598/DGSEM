@@ -1,4 +1,3 @@
-#include "time_integrator/SSPRK3.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <cstddef>
@@ -20,7 +19,7 @@ int main() {
         DGSEM::VolumeIntegralShockCapturingHG<MyBasis, Eq, DGSEM::CentralFlux,
                                               DGSEM::LaxFriedrichsFlux,
                                               DGSEM::HGIndicator<MyBasis, Eq>>;
-
+    MyBasis::initialize();
     auto boundaries =
         DGSEM::BoundarySet(DGSEM::PeriodicBC(), DGSEM::PeriodicBC());
 
@@ -120,6 +119,8 @@ int main() {
     nodes_file.close();
     std::cout << "Final solution saved to solution.txt and nodes.txt"
               << std::endl;
+
+    MyBasis::finalize();
   }
   Kokkos::finalize();
   return 0;

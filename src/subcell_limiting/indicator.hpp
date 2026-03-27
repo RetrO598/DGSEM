@@ -6,8 +6,6 @@
 #include <equations/equations.hpp>
 #include <type_traits>
 
-#include "equations/equations_base.hpp"
-
 namespace DGSEM {
 
 template <class T, std::size_t NNodes, std::size_t NDIMS>
@@ -15,8 +13,9 @@ struct multiply_scalar_dimensionwise {};
 
 template <class T, std::size_t NNodes>
 struct multiply_scalar_dimensionwise<T, NNodes, 1> {
+  template <class MatrixType>
   KOKKOS_INLINE_FUNCTION constexpr void static calc(
-      std::array<T, NNodes>& data_out, const Mat<T, NNodes, NNodes>& matrix,
+      std::array<T, NNodes>& data_out, const MatrixType& matrix,
       const std::array<T, NNodes>& data_in) {
     for (size_t i = 0; i < NNodes; ++i) {
       T res = 0;  // Initialize the result for data_out[i]
