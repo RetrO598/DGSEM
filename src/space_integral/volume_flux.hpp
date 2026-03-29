@@ -33,7 +33,8 @@ struct VolumeIntegralWeak<T, NVARS, 1> {
       for (std::size_t iinode = 0; iinode < BasisData::NNodes; ++iinode) {
         for (std::size_t var = 0; var < NVARS; ++var) {
           du(ielem, iinode, var) =
-              du(ielem, iinode, var) + basis.derivative_dhat(iinode, inode) * flux[var];
+              du(ielem, iinode, var) +
+              basis.derivative_dhat(iinode, inode) * flux[var];
         }
       }
     }
@@ -45,9 +46,9 @@ struct VolumeIntegralWeak<T, NVARS, 2> {
   template <class BasisData, class Equations, class ArrayU, class ArrayDu,
             class MetricArray>
   KOKKOS_INLINE_FUNCTION static void weak_form_kernel(
-      std::size_t ielem, std::size_t jelem, const BasisData &basis,
-      const MetricArray &contravariant_vectors, const Equations &eq,
-      const ArrayU &u, ArrayDu &du) {
+      std::size_t ielem, std::size_t jelem, const BasisData& basis,
+      const MetricArray& contravariant_vectors, const Equations& eq,
+      const ArrayU& u, ArrayDu& du) {
     auto local_dof = [](std::size_t inode, std::size_t jnode) {
       return jnode * BasisData::NNodes + inode;
     };
@@ -71,10 +72,8 @@ struct VolumeIntegralWeak<T, NVARS, 2> {
         const T ja22 = contravariant_vectors(ielem, jelem, dof, 1, 1);
 
         for (std::size_t var = 0; var < NVARS; ++var) {
-          contravariant_flux_xi[var] =
-              ja11 * flux_x[var] + ja12 * flux_y[var];
-          contravariant_flux_eta[var] =
-              ja21 * flux_x[var] + ja22 * flux_y[var];
+          contravariant_flux_xi[var] = ja11 * flux_x[var] + ja12 * flux_y[var];
+          contravariant_flux_eta[var] = ja21 * flux_x[var] + ja22 * flux_y[var];
         }
 
         for (std::size_t iinode = 0; iinode < BasisData::NNodes; ++iinode) {
@@ -125,9 +124,11 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 1> {
         auto flux_ij = NumericFlux::numerical_flux(eq, u_node, u_node_j);
         for (std::size_t var = 0; var < NVARS; ++var) {
           du(ielem, inode, var) =
-              du(ielem, inode, var) + basis.derivative_split(inode, jnode) * flux_ij[var];
+              du(ielem, inode, var) +
+              basis.derivative_split(inode, jnode) * flux_ij[var];
           du(ielem, jnode, var) =
-              du(ielem, jnode, var) + basis.derivative_split(jnode, inode) * flux_ij[var];
+              du(ielem, jnode, var) +
+              basis.derivative_split(jnode, inode) * flux_ij[var];
         }
       }
     }
@@ -207,13 +208,9 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
                 basis.derivative_split(knode, inode) * flux_ik[var];
           }
         }
-      }
-    }
 
-    for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
-      for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
         const std::size_t dof_j = local_dof(inode, jnode);
-        std::array<T, NVARS> u_node{};
+        // std::array<T, NVARS> u_node{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_node[var] = u(ielem, jelem, dof_j, var);
         }
@@ -242,6 +239,39 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
         }
       }
     }
+
+    // for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
+    //   for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
+    // const std::size_t dof_j = local_dof(inode, jnode);
+    // std::array<T, NVARS> u_node{};
+    // for (std::size_t var = 0; var < NVARS; ++var) {
+    //   u_node[var] = u(ielem, jelem, dof_j, var);
+    // }
+
+    // for (std::size_t lnode = jnode + 1; lnode < BasisData::NNodes;
+    //      ++lnode) {
+    //   const std::size_t dof_l = local_dof(inode, lnode);
+    //   std::array<T, NVARS> u_node_l{};
+    //   for (std::size_t var = 0; var < NVARS; ++var) {
+    //     u_node_l[var] = u(ielem, jelem, dof_l, var);
+    //   }
+
+    //   const std::array<T, 2> normal = {
+    //       0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 0) +
+    //              contravariant_vectors(ielem, jelem, dof_l, 1, 0)),
+    //       0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 1) +
+    //              contravariant_vectors(ielem, jelem, dof_l, 1, 1))};
+    //   const auto flux_jl =
+    //       NumericFlux::numerical_flux(eq, u_node, u_node_l, normal);
+    //   for (std::size_t var = 0; var < NVARS; ++var) {
+    //     du(ielem, jelem, dof_j, var) +=
+    //         basis.derivative_split(jnode, lnode) * flux_jl[var];
+    //     du(ielem, jelem, dof_l, var) +=
+    //         basis.derivative_split(lnode, jnode) * flux_jl[var];
+    //   }
+    // }
+    //   }
+    // }
   }
 
   template <class BasisData, class Equations, class ArrayU, class ArrayDu,
@@ -284,13 +314,9 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
                 alpha * basis.derivative_split(knode, inode) * flux_ik[var];
           }
         }
-      }
-    }
 
-    for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
-      for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
         const std::size_t dof_j = local_dof(inode, jnode);
-        std::array<T, NVARS> u_node{};
+        // std::array<T, NVARS> u_node{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_node[var] = u(ielem, jelem, dof_j, var);
         }
@@ -319,6 +345,39 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
         }
       }
     }
+
+    // for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
+    //   for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
+    // const std::size_t dof_j = local_dof(inode, jnode);
+    // std::array<T, NVARS> u_node{};
+    // for (std::size_t var = 0; var < NVARS; ++var) {
+    //   u_node[var] = u(ielem, jelem, dof_j, var);
+    // }
+
+    // for (std::size_t lnode = jnode + 1; lnode < BasisData::NNodes;
+    //      ++lnode) {
+    //   const std::size_t dof_l = local_dof(inode, lnode);
+    //   std::array<T, NVARS> u_node_l{};
+    //   for (std::size_t var = 0; var < NVARS; ++var) {
+    //     u_node_l[var] = u(ielem, jelem, dof_l, var);
+    //   }
+
+    //   const std::array<T, 2> normal = {
+    //       0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 0) +
+    //              contravariant_vectors(ielem, jelem, dof_l, 1, 0)),
+    //       0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 1) +
+    //              contravariant_vectors(ielem, jelem, dof_l, 1, 1))};
+    //   const auto flux_jl =
+    //       NumericFlux::numerical_flux(eq, u_node, u_node_l, normal);
+    //   for (std::size_t var = 0; var < NVARS; ++var) {
+    //     du(ielem, jelem, dof_j, var) +=
+    //         alpha * basis.derivative_split(jnode, lnode) * flux_jl[var];
+    //     du(ielem, jelem, dof_l, var) +=
+    //         alpha * basis.derivative_split(lnode, jnode) * flux_jl[var];
+    //   }
+    // }
+    //   }
+    // }
   }
 };
 
@@ -399,8 +458,7 @@ struct FinitVolumeIntegral<T, NVARS, NumericFlux, 2> {
       for (std::size_t iface = 1; iface < BasisData::NNodes - 1; ++iface) {
         normal_vectors_1[iface][jnode] = normal_vectors_1[iface - 1][jnode];
         for (std::size_t m = 0; m < BasisData::NNodes; ++m) {
-          const T wD =
-              basis.weights[iface] * basis.derivative_matrix(iface, m);
+          const T wD = basis.weights[iface] * basis.derivative_matrix(iface, m);
           const std::size_t dof_m = local_dof(m, jnode);
           normal_vectors_1[iface][jnode][0] +=
               wD * contravariant_vectors(ielem, jelem, dof_m, 0, 0);
@@ -429,8 +487,7 @@ struct FinitVolumeIntegral<T, NVARS, NumericFlux, 2> {
       for (std::size_t iface = 1; iface < BasisData::NNodes - 1; ++iface) {
         normal_vectors_2[inode][iface] = normal_vectors_2[inode][iface - 1];
         for (std::size_t m = 0; m < BasisData::NNodes; ++m) {
-          const T wD =
-              basis.weights[iface] * basis.derivative_matrix(iface, m);
+          const T wD = basis.weights[iface] * basis.derivative_matrix(iface, m);
           const std::size_t dof_m = local_dof(inode, m);
           normal_vectors_2[inode][iface][0] +=
               wD * contravariant_vectors(ielem, jelem, dof_m, 1, 0);
@@ -507,8 +564,9 @@ struct VolumeIntegralWeakForm {
   template <class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations& eq,
                                          const ArrayU& u, ArrayDu& du) const {
-    detail::VolumeIntegralWeak<value_type, NVARS, NDIMS>::template
-        weak_form_kernel<BasisData, Equations>(ielem, basis_data, eq, u, du);
+    detail::VolumeIntegralWeak<value_type, NVARS, NDIMS>::
+        template weak_form_kernel<BasisData, Equations>(ielem, basis_data, eq,
+                                                        u, du);
   }
 
   template <class ArrayU, class ArrayDu>
@@ -517,9 +575,9 @@ struct VolumeIntegralWeakForm {
                                          ArrayDu& du) const
     requires(NDIMS == 2)
   {
-    detail::VolumeIntegralWeak<value_type, NVARS, NDIMS>::template
-        weak_form_kernel<BasisData, Equations>(ielem, jelem, basis_data,
-                                               contravariant_vectors, eq, u, du);
+    detail::VolumeIntegralWeak<value_type, NVARS, NDIMS>::
+        template weak_form_kernel<BasisData, Equations>(
+            ielem, jelem, basis_data, contravariant_vectors, eq, u, du);
   }
 
   BasisData basis_data;
@@ -558,9 +616,9 @@ struct VolumeIntegralSplitForm {
     requires(NDIMS == 2)
   {
     detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
-                                NDIMS>::template split_form_kernel<
-        BasisData, Equations>(ielem, jelem, basis_data, contravariant_vectors,
-                              eq, u, du);
+                                NDIMS>::template split_form_kernel<BasisData,
+                                                                   Equations>(
+        ielem, jelem, basis_data, contravariant_vectors, eq, u, du);
   }
 
   BasisData basis_data;
@@ -587,10 +645,10 @@ struct VolumeIntegralShockCapturingHG
 
   VolumeIntegralShockCapturingHG() = delete;
 
-  VolumeIntegralShockCapturingHG(value_type alpha_max_, value_type alpha_min_,
-                                 bool alpha_smooth_,
-                                 const std::array<std::size_t, NDIMS>& n_cells_,
-                                 MetricArray contravariant_vectors_ = MetricArray())
+  VolumeIntegralShockCapturingHG(
+      value_type alpha_max_, value_type alpha_min_, bool alpha_smooth_,
+      const std::array<std::size_t, NDIMS>& n_cells_,
+      MetricArray contravariant_vectors_ = MetricArray())
       : indicator(alpha_max_, alpha_min_, alpha_smooth_, Basis::device_data()),
         basis_data(Basis::device_data()),
         contravariant_vectors(contravariant_vectors_) {
@@ -646,19 +704,20 @@ struct VolumeIntegralShockCapturingHG
 
     if (dg_only) {
       detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
-                                  NDIMS>::template split_form_kernel<
-          BasisData, Equations>(ielem, jelem, basis_data, contravariant_vectors,
-                                eq, u, du);
+                                  NDIMS>::template split_form_kernel<BasisData,
+                                                                     Equations>(
+          ielem, jelem, basis_data, contravariant_vectors, eq, u, du);
     } else {
       detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
-                                  NDIMS>::template split_form_kernel<
-          BasisData, Equations>(ielem, jelem, basis_data, contravariant_vectors,
-                                eq, u, du, (1.0 - alpha_ielem));
+                                  NDIMS>::template split_form_kernel<BasisData,
+                                                                     Equations>(
+          ielem, jelem, basis_data, contravariant_vectors, eq, u, du,
+          (1.0 - alpha_ielem));
 
       detail::FinitVolumeIntegral<value_type, NVARS, FvFlux<Equations>, NDIMS>::
-          template fv_kernel<BasisData, Equations>(
-              ielem, jelem, basis_data, contravariant_vectors, eq, u, du,
-              alpha_ielem);
+          template fv_kernel<BasisData, Equations>(ielem, jelem, basis_data,
+                                                   contravariant_vectors, eq, u,
+                                                   du, alpha_ielem);
     }
   }
 

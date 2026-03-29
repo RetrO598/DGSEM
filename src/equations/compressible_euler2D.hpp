@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdlib>
 #include <equations/equations_base.hpp>
 
 namespace DGSEM {
@@ -11,7 +12,7 @@ namespace equations {
 
 template <class T>
 class CompressibleEuler2D : public Equations2DBase {
-public:
+ public:
   using value_type = T;
 
   explicit CompressibleEuler2D(const T& gamma = static_cast<T>(1.4))
@@ -32,7 +33,8 @@ public:
     const value_type v_vel = rhov / rho;
     const value_type kinetic =
         static_cast<value_type>(0.5) * rho * (u_vel * u_vel + v_vel * v_vel);
-    const value_type p = (gamma_ - static_cast<value_type>(1.0)) * (rhoE - kinetic);
+    const value_type p =
+        (gamma_ - static_cast<value_type>(1.0)) * (rhoE - kinetic);
 
     if (dim == 0) {
       return {rhou, rhou * u_vel + p, rhou * v_vel, u_vel * (rhoE + p)};
@@ -49,8 +51,7 @@ public:
     const auto flux_y = flux(u, 1);
     std::array<value_type, NVARS> normal_flux{};
     for (std::size_t var = 0; var < NVARS; ++var) {
-      normal_flux[var] =
-          normal[0] * flux_x[var] + normal[1] * flux_y[var];
+      normal_flux[var] = normal[0] * flux_x[var] + normal[1] * flux_y[var];
     }
     return normal_flux;
   }
@@ -129,14 +130,14 @@ public:
     const value_type normal_vel_rr =
         u_vel_rr * normal[0] + v_vel_rr * normal[1];
 
-    return std::max(std::abs(normal_vel_ll) + a_ll * normal_norm,
-                    std::abs(normal_vel_rr) + a_rr * normal_norm);
+    return std::max(std::abs(normal_vel_ll), std::abs(normal_vel_rr)) +
+           std::max(a_ll, a_rr) * normal_norm;
   }
 
   KOKKOS_INLINE_FUNCTION
   value_type get_gamma() const { return gamma_; }
 
-private:
+ private:
   value_type gamma_ = static_cast<value_type>(1.4);
 };
 
