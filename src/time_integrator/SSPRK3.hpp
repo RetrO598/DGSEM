@@ -38,6 +38,18 @@ struct parallel_ma3 {
     Kokkos::parallel_for("parallel_ma", n_elems_[0], functor);
   }
 
+  static void apply(DataArray u1_, DataArray u2_, DataArray u3_, DataArray du_,
+                    T a1, T a2, T a3, std::size_t n_dofs_,
+                    std::array<std::size_t, NDIMS> n_elems_)
+    requires(NDIMS == 2)
+  {
+    parallel_ma3 functor(u1_, u2_, u3_, du_, a1, a2, a3, n_dofs_);
+    Kokkos::parallel_for("parallel_ma",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                         functor);
+  }
+
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const
     requires(NDIMS == 1)
   {
@@ -46,6 +58,20 @@ struct parallel_ma3 {
         u1(ielem, inode, ivar) = a1 * u2(ielem, inode, ivar) +
                                  a2 * u3(ielem, inode, ivar) +
                                  a3 * du(ielem, inode, ivar);
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem) const
+    requires(NDIMS == 2)
+  {
+    for (std::size_t inode = 0; inode < n_dofs; ++inode) {
+      for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
+        u1(ielem, jelem, inode, ivar) =
+            a1 * u2(ielem, jelem, inode, ivar) +
+            a2 * u3(ielem, jelem, inode, ivar) +
+            a3 * du(ielem, jelem, inode, ivar);
       }
     }
   }
@@ -81,6 +107,18 @@ struct parallel_ma2 {
     Kokkos::parallel_for("parallel_ma", n_elems_[0], functor);
   }
 
+  static void apply(DataArray u1_, DataArray u2_, DataArray du_, T a1, T a2,
+                    std::size_t n_dofs_,
+                    std::array<std::size_t, NDIMS> n_elems_)
+    requires(NDIMS == 2)
+  {
+    parallel_ma2 functor(u1_, u2_, du_, a1, a2, n_dofs_);
+    Kokkos::parallel_for("parallel_ma",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                         functor);
+  }
+
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const
     requires(NDIMS == 1)
   {
@@ -88,6 +126,19 @@ struct parallel_ma2 {
       for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
         u1(ielem, inode, ivar) =
             a1 * u2(ielem, inode, ivar) + a2 * du(ielem, inode, ivar);
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem) const
+    requires(NDIMS == 2)
+  {
+    for (std::size_t inode = 0; inode < n_dofs; ++inode) {
+      for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
+        u1(ielem, jelem, inode, ivar) =
+            a1 * u2(ielem, jelem, inode, ivar) +
+            a2 * du(ielem, jelem, inode, ivar);
       }
     }
   }

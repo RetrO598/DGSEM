@@ -11,6 +11,11 @@ public:
   virtual ~Equations1DBase() = default;
 };
 
+class Equations2DBase {
+public:
+  virtual ~Equations2DBase() = default;
+};
+
 template <class Equations>
 struct EquationTraits {
   using value_type = typename Equations::value_type;

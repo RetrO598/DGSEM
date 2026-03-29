@@ -25,7 +25,8 @@ struct LaxFriedrichsFlux<equations::LinearScalarAdvection1D<T>> {
   KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
   numerical_flux(const equations::LinearScalarAdvection1D<T> &eq,
                  const std::array<value_type, NVARS> &uL,
-                 const std::array<value_type, NVARS> &uR) {
+                 const std::array<value_type, NVARS> &uR,
+                 std::size_t dim = 0) {
     auto speed = eq.get_wave_speed();
     auto max_speed = std::abs(speed);
     std::array<T, NVARS> flux_L = eq.flux(uL, 0);
@@ -50,7 +51,8 @@ struct LaxFriedrichsFlux<equations::BuckleyLeverett1D<T>> {
   KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
   numerical_flux(const equations::BuckleyLeverett1D<T> &eq,
                  const std::array<value_type, NVARS> &uL,
-                 const std::array<value_type, NVARS> &uR) {
+                 const std::array<value_type, NVARS> &uR,
+                 std::size_t dim = 0) {
     auto speed = eq.get_wave_speed();
     auto max_speed = std::abs(speed);
     std::array<T, NVARS> flux_L = eq.flux(uL, 0);
@@ -75,7 +77,8 @@ struct LaxFriedrichsFlux<equations::InviscidBurgers1D<T>> {
   KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
   numerical_flux(const equations::InviscidBurgers1D<T> &eq,
                  const std::array<value_type, NVARS> &uL,
-                 const std::array<value_type, NVARS> &uR) {
+                 const std::array<value_type, NVARS> &uR,
+                 std::size_t dim = 0) {
     auto max_speed = eq.get_wave_speed(uL, uR);
     std::array<T, NVARS> flux_L = eq.flux(uL, 0);
     std::array<T, NVARS> flux_R = eq.flux(uR, 0);
@@ -99,7 +102,8 @@ struct LaxFriedrichsFlux<equations::CompressibleEuler1D<T>> {
   KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
   numerical_flux(const equations::CompressibleEuler1D<T> &eq,
                  const std::array<value_type, NVARS> &uL,
-                 const std::array<value_type, NVARS> &uR) {
+                 const std::array<value_type, NVARS> &uR,
+                 std::size_t dim = 0) {
     auto max_speed = eq.get_wave_speed(uL, uR);
     std::array<T, NVARS> flux_L = eq.flux(uL, 0);
     std::array<T, NVARS> flux_R = eq.flux(uR, 0);
@@ -109,6 +113,47 @@ struct LaxFriedrichsFlux<equations::CompressibleEuler1D<T>> {
           0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
     }
 
+    return flux;
+  }
+};
+
+template <class T>
+struct LaxFriedrichsFlux<equations::CompressibleEuler2D<T>> {
+  using traits = equations::EquationTraits<equations::CompressibleEuler2D<T>>;
+  using value_type = typename traits::value_type;
+
+  constexpr static std::size_t NDIMS = traits::NDIMS;
+  constexpr static std::size_t NVARS = traits::NVARS;
+
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
+  numerical_flux(const equations::CompressibleEuler2D<T> &eq,
+                 const std::array<value_type, NVARS> &uL,
+                 const std::array<value_type, NVARS> &uR,
+                 std::size_t dim = 0) {
+    auto max_speed = eq.get_wave_speed(uL, uR, dim);
+    std::array<T, NVARS> flux_L = eq.flux(uL, dim);
+    std::array<T, NVARS> flux_R = eq.flux(uR, dim);
+    std::array<value_type, NVARS> flux{};
+    for (std::size_t i = 0; i < NVARS; ++i) {
+      flux[i] =
+          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+    }
+    return flux;
+  }
+
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
+  numerical_flux(const equations::CompressibleEuler2D<T> &eq,
+                 const std::array<value_type, NVARS> &uL,
+                 const std::array<value_type, NVARS> &uR,
+                 const std::array<value_type, NDIMS> &normal) {
+    auto max_speed = eq.get_wave_speed(uL, uR, normal);
+    std::array<T, NVARS> flux_L = eq.flux(uL, normal);
+    std::array<T, NVARS> flux_R = eq.flux(uR, normal);
+    std::array<value_type, NVARS> flux{};
+    for (std::size_t i = 0; i < NVARS; ++i) {
+      flux[i] =
+          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+    }
     return flux;
   }
 };
@@ -123,9 +168,25 @@ struct CentralFlux {
 
   KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
   numerical_flux(const Equations &eq, const std::array<value_type, NVARS> &uL,
-                 const std::array<value_type, NVARS> &uR) {
-    auto flux_L = eq.flux(uL, 0);
-    auto flux_R = eq.flux(uR, 0);
+                 const std::array<value_type, NVARS> &uR,
+                 std::size_t dim = 0) {
+    auto flux_L = eq.flux(uL, dim);
+    auto flux_R = eq.flux(uR, dim);
+    std::array<value_type, NVARS> flux{};
+    for (std::size_t i = 0; i < NVARS; ++i) {
+      flux[i] = 0.5 * (flux_L[i] + flux_R[i]);
+    }
+    return flux;
+  }
+
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
+  numerical_flux(const Equations &eq, const std::array<value_type, NVARS> &uL,
+                 const std::array<value_type, NVARS> &uR,
+                 const std::array<value_type, NDIMS> &normal)
+    requires(NDIMS == 2)
+  {
+    auto flux_L = eq.flux(uL, normal);
+    auto flux_R = eq.flux(uR, normal);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
       flux[i] = 0.5 * (flux_L[i] + flux_R[i]);
@@ -300,6 +361,83 @@ struct ChandrashekarFlux<equations::CompressibleEuler1D<T>> {
     T f3 = f1 * 0.5 * (1.0 / (gamma - 1.0) / beta_mean - velocity_square_avg) +
            f2 * v1_avg;
     return {f1, f2, f3};
+  }
+};
+
+template <class T>
+struct ChandrashekarFlux<equations::CompressibleEuler2D<T>> {
+  using traits = equations::EquationTraits<equations::CompressibleEuler2D<T>>;
+  constexpr static std::size_t NDIMS = traits::NDIMS;
+  constexpr static std::size_t NVARS = traits::NVARS;
+
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::CompressibleEuler2D<T> &eq,
+                 const std::array<T, NVARS> &u_ll,
+                 const std::array<T, NVARS> &u_rr,
+                 const std::array<T, NDIMS> &normal) {
+    const T rho_ll = u_ll[0];
+    const T rhou_ll = u_ll[1];
+    const T rhov_ll = u_ll[2];
+    const T rhoE_ll = u_ll[3];
+
+    const T rho_rr = u_rr[0];
+    const T rhou_rr = u_rr[1];
+    const T rhov_rr = u_rr[2];
+    const T rhoE_rr = u_rr[3];
+
+    const T uvel_ll = rhou_ll / rho_ll;
+    const T vvel_ll = rhov_ll / rho_ll;
+    const T uvel_rr = rhou_rr / rho_rr;
+    const T vvel_rr = rhov_rr / rho_rr;
+
+    const T normal_norm =
+        std::sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+    const T nx = normal[0] / normal_norm;
+    const T ny = normal[1] / normal_norm;
+    const T tx = -ny;
+    const T ty = nx;
+
+    const T vn_ll = uvel_ll * nx + vvel_ll * ny;
+    const T vt_ll = uvel_ll * tx + vvel_ll * ty;
+    const T vn_rr = uvel_rr * nx + vvel_rr * ny;
+    const T vt_rr = uvel_rr * tx + vvel_rr * ty;
+
+    const T gamma = eq.get_gamma();
+    const T p_ll =
+        (gamma - 1.0) *
+        (rhoE_ll -
+         0.5 * rho_ll * (uvel_ll * uvel_ll + vvel_ll * vvel_ll));
+    const T p_rr =
+        (gamma - 1.0) *
+        (rhoE_rr -
+         0.5 * rho_rr * (uvel_rr * uvel_rr + vvel_rr * vvel_rr));
+
+    const T beta_ll = 0.5 * rho_ll / p_ll;
+    const T beta_rr = 0.5 * rho_rr / p_rr;
+    const T rho_avg = 0.5 * (rho_ll + rho_rr);
+    const T rho_mean = ln_mean(rho_ll, rho_rr);
+    const T beta_mean = ln_mean(beta_ll, beta_rr);
+    const T beta_avg = 0.5 * (beta_ll + beta_rr);
+    const T vn_avg = 0.5 * (vn_ll + vn_rr);
+    const T vt_avg = 0.5 * (vt_ll + vt_rr);
+    const T p_mean = 0.5 * rho_avg / beta_avg;
+    const T velocity_square_avg =
+        0.5 * (uvel_ll * uvel_ll + vvel_ll * vvel_ll + uvel_rr * uvel_rr +
+               vvel_rr * vvel_rr);
+
+    const T f_rho = rho_mean * vn_avg;
+    const T f_mom_n = f_rho * vn_avg + p_mean;
+    const T f_mom_t = f_rho * vt_avg;
+    const T f_energy =
+        f_rho *
+            (0.5 * (1.0 / (gamma - 1.0) / beta_mean) -
+             0.5 * velocity_square_avg) +
+        f_mom_n * vn_avg + f_mom_t * vt_avg;
+
+    return {normal_norm * f_rho,
+            normal_norm * (f_mom_n * nx + f_mom_t * tx),
+            normal_norm * (f_mom_n * ny + f_mom_t * ty),
+            normal_norm * f_energy};
   }
 };
 

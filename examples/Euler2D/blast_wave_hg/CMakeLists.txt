@@ -1,0 +1,2 @@
+add_executable(euler2d_blast_wave_hg blast_wave_hg.cpp)
+target_link_libraries(euler2d_blast_wave_hg PRIVATE dgsem)

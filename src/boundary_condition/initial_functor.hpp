@@ -11,14 +11,15 @@ namespace DGSEM {
 template <class T, class Functor, std::size_t NDIMS>
 struct InitialFunctor {
   using DataArray = solution_type_traits<T, NDIMS>::DataArray;
+  using CoordArray = typename coordinate_type_traits<T, NDIMS>::CoordArray;
 
-  InitialFunctor(DataArray u_, DataArray node_coords_, Functor initial_,
+  InitialFunctor(DataArray u_, CoordArray node_coords_, Functor initial_,
                  std::array<std::size_t, NDIMS> n_elems_, std::size_t n_dofs_,
                  std::size_t NVARS_)
       : u(u_), node_coords(node_coords_), initial(initial_), n_elems(n_elems_),
         n_dofs(n_dofs_), NVARS(NVARS_) {}
 
-  static void apply(DataArray u_, DataArray node_coords_, Functor initial_,
+  static void apply(DataArray u_, CoordArray node_coords_, Functor initial_,
                     std::array<std::size_t, NDIMS> n_elems_,
                     std::size_t n_dofs_, std::size_t NVARS_)
     requires(NDIMS == 1)
@@ -29,7 +30,7 @@ struct InitialFunctor {
     Kokkos::parallel_for("initialize_elements", n_elems_[0], functor);
   }
 
-  static void apply(DataArray u_, DataArray node_coords_, Functor initial_,
+  static void apply(DataArray u_, CoordArray node_coords_, Functor initial_,
                     std::array<std::size_t, NDIMS> n_elems_,
                     std::size_t n_dofs_, std::size_t NVARS_)
     requires(NDIMS == 2)
@@ -82,7 +83,7 @@ struct InitialFunctor {
   std::size_t n_dofs;
   std::size_t NVARS;
   DataArray u;
-  DataArray node_coords;
+  CoordArray node_coords;
   const Functor initial;
 };
 } // namespace DGSEM

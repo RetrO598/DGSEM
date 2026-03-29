@@ -98,10 +98,18 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_volume_integral(solution& sol) {
-  VolumeFlux volume_integral{};
+  if constexpr (NDIMS == 2) {
+    VolumeFlux volume_integral(element.contravariant_vectors_device);
+    VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux,
+                          NDIMS>::apply(sol.u_device, sol.du_device, eq,
+                                        volume_integral, n_cells);
+  } else {
+    VolumeFlux volume_integral{};
 
-  VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
-      sol.u_device, sol.du_device, eq, volume_integral, n_cells);
+    VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux,
+                          NDIMS>::apply(sol.u_device, sol.du_device, eq,
+                                        volume_integral, n_cells);
+  }
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -110,11 +118,22 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_volume_integral(solution& sol)
   requires std::derived_from<VolumeFlux, VolumeIntegralShockCapturingBase>
 {
-  VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth, n_cells);
+  if constexpr (NDIMS == 2) {
+    VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth, n_cells,
+                               element.contravariant_vectors_device);
 
-  volume_integral.calc_alpha(n_cells, sol.u_device);
-  VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux, NDIMS>::apply(
-      sol.u_device, sol.du_device, eq, volume_integral, n_cells);
+    volume_integral.calc_alpha(n_cells, sol.u_device);
+    VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux,
+                          NDIMS>::apply(sol.u_device, sol.du_device, eq,
+                                        volume_integral, n_cells);
+  } else {
+    VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth, n_cells);
+
+    volume_integral.calc_alpha(n_cells, sol.u_device);
+    VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux,
+                          NDIMS>::apply(sol.u_device, sol.du_device, eq,
+                                        volume_integral, n_cells);
+  }
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -124,7 +143,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   InterfaceFluxFunctor<
       value_type, Equations, Basis,
       InterfaceHelper<Basis, Equations, SurfaceFlux, ElementCache>,
-      NDIMS>::apply(element.left_neighbors_device, eq, sol.u_device,
+      NDIMS>::apply(element.left_neighbors_device,
+                    element.contravariant_vectors_device,
+                    element.inverse_jacobian_device, eq, sol.u_device,
                     sol.surface_flux_value_device, n_cells);
 }
 
