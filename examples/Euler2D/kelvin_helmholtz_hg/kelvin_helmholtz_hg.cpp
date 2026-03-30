@@ -7,11 +7,12 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <numbers>
 #include <string>
 
 template <class T>
-struct BlastWaveInitial
-    : public DGSEM::AbstractInitial<BlastWaveInitial<T>,
+struct KelvinHelmholtzInitial
+    : public DGSEM::AbstractInitial<KelvinHelmholtzInitial<T>,
                                     DGSEM::equations::CompressibleEuler2D<T>> {
   using Eq = DGSEM::equations::CompressibleEuler2D<T>;
   inline constexpr static std::size_t NDIMS = Eq::NDIMS;
@@ -21,25 +22,14 @@ struct BlastWaveInitial
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     const T x = coordinate[0];
     const T y = coordinate[1];
-    const T r = std::sqrt(x * x + y * y);
-
-    T rho;
-    T v1;
-    T v2;
-    T p;
-    if (r > static_cast<T>(0.5)) {
-      rho = static_cast<T>(1.0);
-      v1 = static_cast<T>(0.0);
-      v2 = static_cast<T>(0.0);
-      p = static_cast<T>(1.0e-3);
-    } else {
-      const T phi = std::atan2(y, x);
-      rho = static_cast<T>(1.1691);
-      v1 = static_cast<T>(0.1882) * std::cos(phi);
-      v2 = static_cast<T>(0.1882) * std::sin(phi);
-      p = static_cast<T>(1.245);
-    }
-
+    const T slope = static_cast<T>(15.0);
+    const T B = std::tanh(slope * y + static_cast<T>(7.5)) -
+                std::tanh(slope * y - static_cast<T>(7.5));
+    const T rho = static_cast<T>(0.5) + static_cast<T>(0.75) * B;
+    const T v1 = static_cast<T>(0.5) * (B - static_cast<T>(1.0));
+    const T v2 = static_cast<T>(0.1) *
+                 std::sin(static_cast<T>(2.0) * std::numbers::pi_v<T> * x);
+    const T p = static_cast<T>(1.0);
     const T gamma = static_cast<T>(1.4);
     const T rhoE = p / (gamma - static_cast<T>(1.0)) +
                    static_cast<T>(0.5) * rho * (v1 * v1 + v2 * v2);
@@ -60,12 +50,12 @@ std::array<T, 4> cons_to_prim(const std::array<T, 4>& u, T gamma) {
   return {rho, v1, v2, p};
 }
 
-int main() {
-  Kokkos::initialize();
+int main(int argc, char* argv[]) {
+  Kokkos::initialize(argc, argv);
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleEuler2D<value_type>;
-    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 3>;
+    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 4>;
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
@@ -83,13 +73,19 @@ int main() {
 
     std::size_t nx = 256;
     std::size_t ny = 256;
-    value_type t_final = 12.5;
-    std::string output_path = "blast_wave_hg_solution.txt";
+    value_type t_final = 3.0;
+    std::string output_path = "kelvin_helmholtz_hg.txt";
+    if (argc > 1)
+      nx = static_cast<std::size_t>(std::strtoull(argv[1], nullptr, 10));
+    if (argc > 2)
+      ny = static_cast<std::size_t>(std::strtoull(argv[2], nullptr, 10));
+    if (argc > 3) t_final = std::strtod(argv[3], nullptr);
+    if (argc > 4) output_path = argv[4];
 
-    std::array<value_type, 4> domain_mesh = {-2.0, 2.0, -2.0, 2.0};
+    std::array<value_type, 4> domain_mesh = {-1.0, 1.0, -1.0, 1.0};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
-        std::array<value_type, 2>{-2.0, -2.0},
-        std::array<value_type, 2>{2.0, 2.0}};
+        std::array<value_type, 2>{-1.0, -1.0},
+        std::array<value_type, 2>{1.0, 1.0}};
     std::array<std::size_t, 2> n_cells = {nx, ny};
 
     Mesh mesh(domain_mesh, n_cells);
@@ -106,31 +102,33 @@ int main() {
     container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
-    solver.set_indicator_parameters(0.5, 0.001, false);
+    solver.set_indicator_parameters(0.002, 0.0001, false);
 
     Solution sol(mesh);
-    BlastWaveInitial<value_type> initial{};
+    KelvinHelmholtzInitial<value_type> initial{};
     solver.initialize(initial, sol);
 
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     TimeIntegrator time_integrator(sol, mesh);
 
-    const value_type cfl = 0.5;
+    const value_type cfl = 0.2;
     const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
     const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
-    const value_type max_speed = 2.0;
+    const value_type max_speed = 2.5;
     const value_type dt =
         cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
+
     int iter = 0;
     value_type t = 0.0;
     while (t < t_final) {
-      time_integrator.step(solver, sol, dt);
-      t += dt;
-      iter++;
+      const value_type dt_step = std::min(dt, t_final - t);
+      time_integrator.step(solver, sol, dt_step);
+      t += dt_step;
+      ++iter;
 
       if (iter % 100 == 0) {
-        std::cout << "Iter: " << std::setw(5) << iter
-                  << "  Time: " << std::fixed << std::setprecision(4) << t
+        std::cout << "Iter: " << std::setw(6) << iter
+                  << "  Time: " << std::fixed << std::setprecision(6) << t
                   << std::endl;
       }
     }

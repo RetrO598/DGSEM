@@ -1,1 +1,3 @@
 add_subdirectory(blast_wave_hg)
+add_subdirectory(kelvin_helmholtz_hg)
+add_subdirectory(riemann2d)

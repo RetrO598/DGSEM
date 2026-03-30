@@ -1,6 +1,5 @@
 #include <Kokkos_Core.hpp>
 #include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <dgsem.hpp>
@@ -10,8 +9,8 @@
 #include <string>
 
 template <class T>
-struct BlastWaveInitial
-    : public DGSEM::AbstractInitial<BlastWaveInitial<T>,
+struct Riemann2DInitial
+    : public DGSEM::AbstractInitial<Riemann2DInitial<T>,
                                     DGSEM::equations::CompressibleEuler2D<T>> {
   using Eq = DGSEM::equations::CompressibleEuler2D<T>;
   inline constexpr static std::size_t NDIMS = Eq::NDIMS;
@@ -21,23 +20,31 @@ struct BlastWaveInitial
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     const T x = coordinate[0];
     const T y = coordinate[1];
-    const T r = std::sqrt(x * x + y * y);
 
     T rho;
     T v1;
     T v2;
     T p;
-    if (r > static_cast<T>(0.5)) {
-      rho = static_cast<T>(1.0);
-      v1 = static_cast<T>(0.0);
-      v2 = static_cast<T>(0.0);
-      p = static_cast<T>(1.0e-3);
-    } else {
-      const T phi = std::atan2(y, x);
-      rho = static_cast<T>(1.1691);
-      v1 = static_cast<T>(0.1882) * std::cos(phi);
-      v2 = static_cast<T>(0.1882) * std::sin(phi);
-      p = static_cast<T>(1.245);
+    if (x >= 0.5 && y >= 0.5) {
+      rho = 0.5313;
+      v1 = 0.0;
+      v2 = 0.0;
+      p = 0.4;
+    } else if (x < 0.5 && y >= 0.5) {
+      rho = 1.0;
+      v1 = 0.7276;
+      v2 = 0.0;
+      p = 1.0;
+    } else if (x < 0.5 && y < 0.5) {
+      rho = 0.8;
+      v1 = 0.0;
+      v2 = 0.0;
+      p = 1.0;
+    } else if (x >= 0.5 && y < 0.5) {
+      rho = 1.0;
+      v1 = 0.0;
+      v2 = 0.7276;
+      p = 1.0;
     }
 
     const T gamma = static_cast<T>(1.4);
@@ -65,7 +72,7 @@ int main() {
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleEuler2D<value_type>;
-    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 3>;
+    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 4>;
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
@@ -81,15 +88,15 @@ int main() {
                                            Mesh, decltype(boundaries)>;
     using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-    std::size_t nx = 256;
-    std::size_t ny = 256;
-    value_type t_final = 12.5;
-    std::string output_path = "blast_wave_hg_solution.txt";
+    std::size_t nx = 512;
+    std::size_t ny = 512;
+    value_type t_final = 0.25;
+    std::string output_path = "riemann2d.txt";
 
-    std::array<value_type, 4> domain_mesh = {-2.0, 2.0, -2.0, 2.0};
+    std::array<value_type, 4> domain_mesh = {-0.5, 1.5, -0.5, 1.5};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
-        std::array<value_type, 2>{-2.0, -2.0},
-        std::array<value_type, 2>{2.0, 2.0}};
+        std::array<value_type, 2>{-0.5, -0.5},
+        std::array<value_type, 2>{1.5, 1.5}};
     std::array<std::size_t, 2> n_cells = {nx, ny};
 
     Mesh mesh(domain_mesh, n_cells);
@@ -109,13 +116,13 @@ int main() {
     solver.set_indicator_parameters(0.5, 0.001, false);
 
     Solution sol(mesh);
-    BlastWaveInitial<value_type> initial{};
+    Riemann2DInitial<value_type> initial{};
     solver.initialize(initial, sol);
 
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     TimeIntegrator time_integrator(sol, mesh);
 
-    const value_type cfl = 0.5;
+    const value_type cfl = 0.2;
     const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
     const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
     const value_type max_speed = 2.0;

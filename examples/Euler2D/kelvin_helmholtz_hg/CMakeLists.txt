@@ -1,0 +1,2 @@
+add_executable(euler2d_kelvin_helmholtz_hg kelvin_helmholtz_hg.cpp)
+target_link_libraries(euler2d_kelvin_helmholtz_hg PRIVATE dgsem)
