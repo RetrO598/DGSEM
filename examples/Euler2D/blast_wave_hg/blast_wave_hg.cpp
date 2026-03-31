@@ -83,7 +83,7 @@ int main() {
 
     std::size_t nx = 256;
     std::size_t ny = 256;
-    value_type t_final = 12.5;
+    value_type t_final = 1.2;
     std::string output_path = "blast_wave_hg_solution.txt";
 
     std::array<value_type, 4> domain_mesh = {-2.0, 2.0, -2.0, 2.0};

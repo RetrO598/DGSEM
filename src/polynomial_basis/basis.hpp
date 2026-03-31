@@ -44,6 +44,7 @@ public:
   inline static View2D inverse_vandermonde_legendre;
 
   inline static std::array<T, NNodes> nodes_host;
+  inline static std::array<T, NNodes> weights_host;
   inline static Mat<T, NNodes, NNodes> derivative_host;
 
   static void initialize() {
@@ -74,6 +75,7 @@ public:
       nodes_h(i) = data_host.nodes[i];
       nodes_host[i] = data_host.nodes[i];
       weights_h(i) = data_host.weights[i];
+      weights_host[i] = data_host.weights[i];
       inv_weights_h(i) = data_host.inv_weights[i];
     }
 

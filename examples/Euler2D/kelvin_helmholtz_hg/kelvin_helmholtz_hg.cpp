@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 
     std::size_t nx = 256;
     std::size_t ny = 256;
-    value_type t_final = 3.0;
+    value_type t_final = 3.7;
     std::string output_path = "kelvin_helmholtz_hg.txt";
     if (argc > 1)
       nx = static_cast<std::size_t>(std::strtoull(argv[1], nullptr, 10));

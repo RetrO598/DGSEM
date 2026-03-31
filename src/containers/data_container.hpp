@@ -25,6 +25,7 @@ struct StructuredElementContainer {
   MatrixHost jacobian_matrix;
   MatrixHost contravariant_vectors;
   ScalarArrayHost inverse_jacobian;
+  SubcellNormalVectors<T, NDIMS> subcell_normals;
 
   CoordArray node_coordinates_device;
   IndexArray left_neighbors_device;
@@ -38,6 +39,7 @@ struct StructuredElementContainer {
     Kokkos::deep_copy(jacobian_matrix_device, jacobian_matrix);
     Kokkos::deep_copy(contravariant_vectors_device, contravariant_vectors);
     Kokkos::deep_copy(inverse_jacobian_device, inverse_jacobian);
+    subcell_normals.sync_to_device();
   }
 };
 
@@ -141,7 +143,6 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
   using IndexArrayHost = index_type_traits<2>::IndexArrayHost;
   using Matrix = jacobian_type_traits<T, 2>::JacobianMatrix;
   using MatrixHost = jacobian_type_traits<T, 2>::JacobianMatrixHost;
-
   inline constexpr static std::size_t ndofs() {
     return Basis::NNodes * Basis::NNodes;
   }
@@ -172,7 +173,9 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
                     2, 2);
     Kokkos::realloc(container.contravariant_vectors, n_cells[0], n_cells[1],
                     ndofs(), 2, 2);
-    Kokkos::realloc(container.inverse_jacobian, n_cells[0], n_cells[1], ndofs());
+    Kokkos::realloc(container.inverse_jacobian, n_cells[0], n_cells[1],
+                    ndofs());
+    container.subcell_normals.allocate(n_cells, Basis::NNodes);
   }
 
   inline constexpr static void calc_node_coordinates(
@@ -288,19 +291,9 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
             (ielem > 0) ? ielem - 1 : (periodic[0] ? n_cells[0] - 1 : invalid);
         neighbors(ielem, jelem, 0, 1) = jelem;
 
-        // neighbors(ielem, jelem, 1, 0) =
-        //     (ielem + 1 < n_cells[0]) ? ielem + 1 : (periodic[0] ? 0 :
-        //     invalid);
-        // neighbors(ielem, jelem, 1, 1) = jelem;
-
         neighbors(ielem, jelem, 1, 0) = ielem;
         neighbors(ielem, jelem, 1, 1) =
             (jelem > 0) ? jelem - 1 : (periodic[1] ? n_cells[1] - 1 : invalid);
-
-        // neighbors(ielem, jelem, 3, 0) = ielem;
-        // neighbors(ielem, jelem, 3, 1) =
-        //     (jelem + 1 < n_cells[1]) ? jelem + 1 : (periodic[1] ? 0 :
-        //     invalid);
       }
     }
   }
@@ -335,6 +328,11 @@ struct StructuredElementInitializer {
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         calc_inverse_jacobian(n_cells, container.inverse_jacobian,
                               container.jacobian_matrix);
+
+    if constexpr (NDIMS == 2) {
+      container.subcell_normals.template initialize_host<Basis>(
+          n_cells, container.contravariant_vectors);
+    }
 
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         initialize_left_neighbor(n_cells, container.left_neighbors, periodic);

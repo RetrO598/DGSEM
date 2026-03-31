@@ -120,7 +120,8 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 {
   if constexpr (NDIMS == 2) {
     VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth, n_cells,
-                               element.contravariant_vectors_device);
+                               element.contravariant_vectors_device,
+                               element.subcell_normals.device_data());
 
     volume_integral.calc_alpha(n_cells, sol.u_device);
     VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux,
