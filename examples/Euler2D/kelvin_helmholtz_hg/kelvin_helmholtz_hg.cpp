@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
                     {true, true}};
 
     initializer.init_elements(n_cells, container);
-    container.sync_to_device();
+    // container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
     solver.set_indicator_parameters(0.002, 0.0001, false);

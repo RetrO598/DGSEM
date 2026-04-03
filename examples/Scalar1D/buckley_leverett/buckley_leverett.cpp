@@ -20,9 +20,8 @@ int main() {
                                               DGSEM::LaxFriedrichsFlux,
                                               DGSEM::HGIndicator<MyBasis, Eq>>;
     MyBasis::initialize();
-    auto dirichFunc = KOKKOS_LAMBDA(
-                          const std::array<double, 1>& coordinate,
-                          double time) {
+    auto dirichFunc =
+        KOKKOS_LAMBDA(const std::array<double, 1>& coordinate, double time) {
       double x = coordinate[0];
       double u = 0.0;
       if (x > -0.5 && x < 0.0) {
@@ -59,7 +58,7 @@ int main() {
 
     initializer.init_elements(n_cells, container);
 
-    container.sync_to_device();
+    // container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
 

@@ -103,7 +103,7 @@ int main() {
                     {true, true}};
 
     initializer.init_elements(n_cells, container);
-    container.sync_to_device();
+    // container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
     solver.set_indicator_parameters(0.5, 0.001, false);

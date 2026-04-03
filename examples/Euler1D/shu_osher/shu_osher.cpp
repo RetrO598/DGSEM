@@ -22,7 +22,7 @@ int main() {
     MyBasis::initialize();
 
     auto dirichFunc =
-        KOKKOS_LAMBDA(const std::array<double, 1> &coordinate, double time) {
+        KOKKOS_LAMBDA(const std::array<double, 1>& coordinate, double time) {
       double x = coordinate[0];
       double rho, u, p;
       if (x < -4.0) {
@@ -69,7 +69,7 @@ int main() {
 
     initializer.init_elements(n_cells, container);
 
-    container.sync_to_device();
+    // container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
 

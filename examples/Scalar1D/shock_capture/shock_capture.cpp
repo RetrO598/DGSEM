@@ -46,7 +46,7 @@ int main() {
 
     initializer.init_elements(n_cells, container);
 
-    container.sync_to_device();
+    // container.sync_to_device();
 
     // container.check_data();
 

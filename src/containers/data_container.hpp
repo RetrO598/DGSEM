@@ -336,6 +336,8 @@ struct StructuredElementInitializer {
 
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         initialize_left_neighbor(n_cells, container.left_neighbors, periodic);
+
+    container.sync_to_device();
   }
 
   Mapping mapping;
