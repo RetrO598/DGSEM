@@ -19,11 +19,11 @@ struct multiply_scalar_dimensionwise<T, NNodes, 1> {
       std::array<T, NNodes>& data_out, const MatrixType& matrix,
       const std::array<T, NNodes>& data_in) {
     for (size_t i = 0; i < NNodes; ++i) {
-      T res = 0;  // Initialize the result for data_out[i]
+      T res = 0; // Initialize the result for data_out[i]
       for (size_t ii = 0; ii < NNodes; ++ii) {
-        res += matrix(i, ii) * data_in[ii];  // Matrix multiplication with array
+        res += matrix(i, ii) * data_in[ii]; // Matrix multiplication with array
       }
-      data_out[i] = res;  // Store the result in data_out
+      data_out[i] = res; // Store the result in data_out
     }
   }
 };
@@ -31,10 +31,10 @@ struct multiply_scalar_dimensionwise<T, NNodes, 1> {
 template <class T, std::size_t NNodes>
 struct multiply_scalar_dimensionwise<T, NNodes, 2> {
   template <class MatrixType>
-  KOKKOS_INLINE_FUNCTION constexpr static void calc(
-      std::array<std::array<T, NNodes>, NNodes>& data_out,
-      const MatrixType& matrix,
-      const std::array<std::array<T, NNodes>, NNodes>& data_in) {
+  KOKKOS_INLINE_FUNCTION constexpr static void
+  calc(std::array<std::array<T, NNodes>, NNodes>& data_out,
+       const MatrixType& matrix,
+       const std::array<std::array<T, NNodes>, NNodes>& data_in) {
     std::array<std::array<T, NNodes>, NNodes> tmp{};
 
     for (std::size_t j = 0; j < NNodes; ++j) {
@@ -65,8 +65,8 @@ struct IndicatorValueAccessor {
   using value_type = typename traits::value_type;
 
   template <class ArrayU>
-  KOKKOS_INLINE_FUNCTION static value_type get_indicator_value(
-      const ArrayU& u, std::size_t ielem, std::size_t inode) {
+  KOKKOS_INLINE_FUNCTION static value_type
+  get_indicator_value(const ArrayU& u, std::size_t ielem, std::size_t inode) {
     return u(ielem, inode, 0);
   }
 };
@@ -77,8 +77,8 @@ struct IndicatorValueAccessor<equations::CompressibleEuler1D<T>> {
   using value_type = typename traits::value_type;
 
   template <class ArrayU>
-  KOKKOS_INLINE_FUNCTION static value_type get_indicator_value(
-      const ArrayU& u, std::size_t ielem, std::size_t inode) {
+  KOKKOS_INLINE_FUNCTION static value_type
+  get_indicator_value(const ArrayU& u, std::size_t ielem, std::size_t inode) {
     value_type rho = u(ielem, inode, 0);
     value_type mom = u(ielem, inode, 1);
     value_type rhoE = u(ielem, inode, 2);
@@ -95,8 +95,9 @@ struct IndicatorValueAccessor<equations::CompressibleEuler2D<T>> {
   using value_type = typename traits::value_type;
 
   template <class ArrayU>
-  KOKKOS_INLINE_FUNCTION static value_type get_indicator_value(
-      const ArrayU& u, std::size_t ielem, std::size_t jelem, std::size_t dof) {
+  KOKKOS_INLINE_FUNCTION static value_type
+  get_indicator_value(const ArrayU& u, std::size_t ielem, std::size_t jelem,
+                      std::size_t dof) {
     const value_type rho = u(ielem, jelem, dof, 0);
     const value_type rhou = u(ielem, jelem, dof, 1);
     const value_type rhov = u(ielem, jelem, dof, 2);
@@ -126,10 +127,8 @@ struct HGIndicator<Basis, Equations, 1> {
 
   HGIndicator(value_type alpha_max_, value_type alpha_min_, bool alpha_smooth_,
               BasisData basis_data_)
-      : alpha_max(alpha_max_),
-        alpha_min(alpha_min_),
-        alpha_smooth(alpha_smooth_),
-        basis_data(basis_data_) {
+      : alpha_max(alpha_max_), alpha_min(alpha_min_),
+        alpha_smooth(alpha_smooth_), basis_data(basis_data_) {
     threshold = 0.5 * std::pow(10.0, -1.8 * std::pow(Basis::NNodes, 0.25));
     s = std::log((1.0 - 0.0001) / 0.0001);
   }
@@ -164,7 +163,8 @@ struct HGIndicator<Basis, Equations, 1> {
           value_type clip1 = 0;
           value_type clip2 = 0;
 
-          for (int i = 0; i < Basis::NNodes; ++i) total += modal[i] * modal[i];
+          for (int i = 0; i < Basis::NNodes; ++i)
+            total += modal[i] * modal[i];
 
           for (int i = 0; i < Basis::NNodes - 1; ++i)
             clip1 += modal[i] * modal[i];
@@ -180,17 +180,20 @@ struct HGIndicator<Basis, Equations, 1> {
           value_type alpha_e =
               1.0 / (1.0 + exp(-s_ / threshold_ * (energy - threshold_)));
 
-          if (alpha_e < alpha_min_) alpha_e = 0;
+          if (alpha_e < alpha_min_)
+            alpha_e = 0;
 
-          if (alpha_e > 1.0 - alpha_min_) alpha_e = 1.0;
+          if (alpha_e > 1.0 - alpha_min_)
+            alpha_e = 1.0;
 
-          if (alpha_e > alpha_max_) alpha_e = alpha_max_;
+          if (alpha_e > alpha_max_)
+            alpha_e = alpha_max_;
 
           alpha(ielem) = alpha_e;
         });
   }
 
- private:
+private:
   value_type alpha_max = 0.5;
   value_type alpha_min = 0.001;
   bool alpha_smooth = false;
@@ -212,10 +215,8 @@ struct HGIndicator<Basis, Equations, 2> {
 
   HGIndicator(value_type alpha_max_, value_type alpha_min_, bool alpha_smooth_,
               BasisData basis_data_)
-      : alpha_max(alpha_max_),
-        alpha_min(alpha_min_),
-        alpha_smooth(alpha_smooth_),
-        basis_data(basis_data_) {
+      : alpha_max(alpha_max_), alpha_min(alpha_min_),
+        alpha_smooth(alpha_smooth_), basis_data(basis_data_) {
     threshold = 0.5 * std::pow(10.0, -1.8 * std::pow(Basis::NNodes, 0.25));
     s = std::log((1.0 - 0.0001) / 0.0001);
   }
@@ -254,57 +255,85 @@ struct HGIndicator<Basis, Equations, 2> {
           multiply_scalar_dimensionwise<value_type, Basis::NNodes, 2>::calc(
               modal, basis_.inverse_vandermonde_legendre, indicator);
 
-          value_type total_energy_clip2 = 0;
+          // value_type total_energy_clip2 = 0;
+          // for (std::size_t j = 0; j + 2 < Basis::NNodes; ++j) {
+          //   for (std::size_t i = 0; i + 2 < Basis::NNodes; ++i) {
+          //     total_energy_clip2 += modal[j][i] * modal[j][i];
+          //   }
+          // }
+
+          // value_type total_energy_clip1 = total_energy_clip2;
+          // for (std::size_t i = 0; i + 1 < Basis::NNodes; ++i) {
+          //   total_energy_clip1 +=
+          //       modal[Basis::NNodes - 2][i] * modal[Basis::NNodes - 2][i];
+          // }
+          // for (std::size_t j = 0; j + 2 < Basis::NNodes; ++j) {
+          //   total_energy_clip1 +=
+          //       modal[j][Basis::NNodes - 2] * modal[j][Basis::NNodes - 2];
+          // }
+
+          // value_type total_energy = total_energy_clip1;
+          // for (std::size_t i = 0; i < Basis::NNodes; ++i) {
+          //   total_energy +=
+          //       modal[Basis::NNodes - 1][i] * modal[Basis::NNodes - 1][i];
+          // }
+          // for (std::size_t j = 0; j + 1 < Basis::NNodes; ++j) {
+          //   total_energy +=
+          //       modal[j][Basis::NNodes - 1] * modal[j][Basis::NNodes - 1];
+          // }
+
+          value_type energy_frac_1 = 0;
+          value_type energy_frac_2 = 0;
+
+          value_type total_energy = 0.0;
+          for (std::size_t j = 0; j < Basis::NNodes; ++j) {
+            for (std::size_t i = 0; i < Basis::NNodes; ++i) {
+              total_energy += modal[j][i] * modal[j][i];
+            }
+          }
+
+          value_type total_energy_clip1 = 0.0;
+          for (std::size_t j = 0; j + 1 < Basis::NNodes; ++j) {
+            for (std::size_t i = 0; i + 1 < Basis::NNodes; ++i) {
+              total_energy_clip1 += modal[j][i] * modal[j][i];
+            }
+          }
+
+          value_type total_energy_clip2 = 0.0;
           for (std::size_t j = 0; j + 2 < Basis::NNodes; ++j) {
             for (std::size_t i = 0; i + 2 < Basis::NNodes; ++i) {
               total_energy_clip2 += modal[j][i] * modal[j][i];
             }
           }
 
-          value_type total_energy_clip1 = total_energy_clip2;
-          for (std::size_t i = 0; i + 1 < Basis::NNodes; ++i) {
-            total_energy_clip1 +=
-                modal[Basis::NNodes - 2][i] * modal[Basis::NNodes - 2][i];
-          }
-          for (std::size_t j = 0; j + 2 < Basis::NNodes; ++j) {
-            total_energy_clip1 +=
-                modal[j][Basis::NNodes - 2] * modal[j][Basis::NNodes - 2];
-          }
-
-          value_type total_energy = total_energy_clip1;
-          for (std::size_t i = 0; i < Basis::NNodes; ++i) {
-            total_energy +=
-                modal[Basis::NNodes - 1][i] * modal[Basis::NNodes - 1][i];
-          }
-          for (std::size_t j = 0; j + 1 < Basis::NNodes; ++j) {
-            total_energy +=
-                modal[j][Basis::NNodes - 1] * modal[j][Basis::NNodes - 1];
-          }
-
-          value_type energy_frac_1 = 0;
-          value_type energy_frac_2 = 0;
           if (total_energy != 0) {
             energy_frac_1 = (total_energy - total_energy_clip1) / total_energy;
+          } else {
+            energy_frac_1 = 0.0;
           }
+
           if (total_energy_clip1 != 0) {
             energy_frac_2 =
                 (total_energy_clip1 - total_energy_clip2) / total_energy_clip1;
+          } else {
+            energy_frac_2 = 0.0;
           }
-          value_type energy =
-              energy_frac_1 > energy_frac_2 ? energy_frac_1 : energy_frac_2;
+
+          value_type energy = std::max(energy_frac_1, energy_frac_2);
 
           value_type alpha_e =
               1.0 / (1.0 + exp(-s_ / threshold_ * (energy - threshold_)));
 
-          if (alpha_e < alpha_min_) alpha_e = 0.0;
-          if (alpha_e > 1.0 - alpha_min_) alpha_e = 1.0;
-          if (alpha_e > alpha_max_) alpha_e = alpha_max_;
+          if (alpha_e < alpha_min_)
+            alpha_e = 0.0;
+          if (alpha_e > 1.0 - alpha_min_)
+            alpha_e = 1.0;
 
-          alpha(ielem, jelem) = alpha_e;
+          alpha(ielem, jelem) = std::min(alpha_max_, alpha_e);
         });
   }
 
- private:
+private:
   value_type alpha_max = 0.5;
   value_type alpha_min = 0.001;
   bool alpha_smooth = false;
@@ -313,4 +342,4 @@ struct HGIndicator<Basis, Equations, 2> {
   value_type threshold;
   value_type s;
 };
-}  // namespace DGSEM
+} // namespace DGSEM

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.21)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -62,7 +62,7 @@ endif()
 
 FetchContent_Declare(
     Kokkos
-    URL https://github.com/kokkos/kokkos/archive/refs/tags/4.4.01.tar.gz
+    URL https://github.com/kokkos/kokkos/archive/refs/tags/4.7.02.tar.gz
 )
 FetchContent_MakeAvailable(Kokkos)
 

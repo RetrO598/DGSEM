@@ -73,14 +73,16 @@ int main(int argc, char* argv[]) {
 
     std::size_t nx = 256;
     std::size_t ny = 256;
-    value_type t_final = 3.7;
+    value_type t_final = 0.5;
     std::string output_path = "kelvin_helmholtz_hg.txt";
     if (argc > 1)
       nx = static_cast<std::size_t>(std::strtoull(argv[1], nullptr, 10));
     if (argc > 2)
       ny = static_cast<std::size_t>(std::strtoull(argv[2], nullptr, 10));
-    if (argc > 3) t_final = std::strtod(argv[3], nullptr);
-    if (argc > 4) output_path = argv[4];
+    if (argc > 3)
+      t_final = std::strtod(argv[3], nullptr);
+    if (argc > 4)
+      output_path = argv[4];
 
     std::array<value_type, 4> domain_mesh = {-1.0, 1.0, -1.0, 1.0};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
@@ -99,10 +101,8 @@ int main(int argc, char* argv[]) {
                     {true, true}};
 
     initializer.init_elements(n_cells, container);
-    // container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
-    solver.set_indicator_parameters(0.002, 0.0001, false);
 
     Solution sol(mesh);
     KelvinHelmholtzInitial<value_type> initial{};
@@ -115,8 +115,9 @@ int main(int argc, char* argv[]) {
     const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
     const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
     const value_type max_speed = 2.5;
-    const value_type dt =
-        cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
+    // const value_type dt =
+    //     cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
+    const value_type dt = 8e-5;
 
     int iter = 0;
     value_type t = 0.0;
