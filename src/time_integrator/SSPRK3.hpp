@@ -19,13 +19,7 @@ struct parallel_ma3 {
 
   parallel_ma3(DataArray u1_, DataArray u2_, DataArray u3_, DataArray du_, T a1,
                T a2, T a3, std::size_t n_dofs_)
-      : u1(u1_),
-        u2(u2_),
-        u3(u3_),
-        du(du_),
-        a1(a1),
-        a2(a2),
-        a3(a3),
+      : u1(u1_), u2(u2_), u3(u3_), du(du_), a1(a1), a2(a2), a3(a3),
         n_dofs(n_dofs_) {}
 
   static void apply(DataArray u1_, DataArray u2_, DataArray u3_, DataArray du_,
@@ -68,10 +62,9 @@ struct parallel_ma3 {
   {
     for (std::size_t inode = 0; inode < n_dofs; ++inode) {
       for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
-        u1(ielem, jelem, inode, ivar) =
-            a1 * u2(ielem, jelem, inode, ivar) +
-            a2 * u3(ielem, jelem, inode, ivar) +
-            a3 * du(ielem, jelem, inode, ivar);
+        u1(ielem, jelem, inode, ivar) = a1 * u2(ielem, jelem, inode, ivar) +
+                                        a2 * u3(ielem, jelem, inode, ivar) +
+                                        a3 * du(ielem, jelem, inode, ivar);
       }
     }
   }
@@ -136,9 +129,8 @@ struct parallel_ma2 {
   {
     for (std::size_t inode = 0; inode < n_dofs; ++inode) {
       for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
-        u1(ielem, jelem, inode, ivar) =
-            a1 * u2(ielem, jelem, inode, ivar) +
-            a2 * du(ielem, jelem, inode, ivar);
+        u1(ielem, jelem, inode, ivar) = a1 * u2(ielem, jelem, inode, ivar) +
+                                        a2 * du(ielem, jelem, inode, ivar);
       }
     }
   }
@@ -152,7 +144,7 @@ struct parallel_ma2 {
 
 template <class T, class Solver, class Mesh, class Solution>
 class SSPRK3 : public TimeIntegrator<T, Solver, Solution> {
- public:
+public:
   using Equations = typename Solver::EquationType;
   explicit SSPRK3(const Solution& sol, const Mesh& mesh_)
       : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()), mesh(mesh_) {};
@@ -177,9 +169,9 @@ class SSPRK3 : public TimeIntegrator<T, Solver, Solution> {
         2.0 / 3.0, 2.0 / 3.0 * dt, solver.get_ndofs(), mesh.get_num_cells());
   }
 
- private:
+private:
   Solution tmp1;
   Solution tmp2;
   const Mesh& mesh;
 };
-}  // namespace DGSEM
+} // namespace DGSEM

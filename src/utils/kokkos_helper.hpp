@@ -4,7 +4,7 @@
 
 namespace DGSEM {
 template <class ViewType>
-void clone_view_shape(ViewType &dst, const ViewType &src) {
+void clone_view_shape(ViewType& dst, const ViewType& src) {
   if constexpr (ViewType::rank == 1) {
     Kokkos::realloc(dst, src.extent(0));
   } else if constexpr (ViewType::rank == 2) {

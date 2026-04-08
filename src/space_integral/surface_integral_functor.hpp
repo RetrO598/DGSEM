@@ -17,9 +17,7 @@ struct SurfaceIntegralFunctor {
 
   SurfaceIntegralFunctor(DataArray du_, DataArray surface_flux_,
                          const Equations& eq_)
-      : du(du_),
-        surface_flux(surface_flux_),
-        eq(eq_),
+      : du(du_), surface_flux(surface_flux_), eq(eq_),
         basis_data(Basis::device_data()) {}
 
   static void apply(DataArray u_, DataArray surface_flux_, const Equations& eq_,
@@ -62,4 +60,4 @@ struct SurfaceIntegralFunctor {
   BasisData basis_data;
 };
 
-}  // namespace DGSEM
+} // namespace DGSEM

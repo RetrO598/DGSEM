@@ -32,18 +32,15 @@ struct InterfaceFluxFunctor {
                        MetricArray contravariant_vectors_,
                        ScalarArray inverse_jacobian_, const Equations& eq_,
                        DataArray u_, DataArray surface_flux_)
-      : left_neighbors(left_neighbors_),
-        eq(eq_),
-        u(u_),
+      : left_neighbors(left_neighbors_), eq(eq_), u(u_),
         surface_flux(surface_flux_),
         contravariant_vectors(contravariant_vectors_),
         inverse_jacobian(inverse_jacobian_) {}
 
-  static void apply(IndexArray left_neighbors_,
-                    MetricArray contravariant_vectors_,
-                    ScalarArray inverse_jacobian_, const Equations& eq_,
-                    DataArray u_, DataArray surface_flux_,
-                    std::array<std::size_t, NDIMS> n_elems_)
+  static void
+  apply(IndexArray left_neighbors_, MetricArray contravariant_vectors_,
+        ScalarArray inverse_jacobian_, const Equations& eq_, DataArray u_,
+        DataArray surface_flux_, std::array<std::size_t, NDIMS> n_elems_)
     requires(NDIMS == 1)
   {
     InterfaceFluxFunctor functor(left_neighbors_, contravariant_vectors_,
@@ -51,11 +48,10 @@ struct InterfaceFluxFunctor {
     Kokkos::parallel_for("interface_flux", n_elems_[0], functor);
   }
 
-  static void apply(IndexArray left_neighbors_,
-                    MetricArray contravariant_vectors_,
-                    ScalarArray inverse_jacobian_, const Equations& eq_,
-                    DataArray u_, DataArray surface_flux_,
-                    std::array<std::size_t, NDIMS> n_elems_)
+  static void
+  apply(IndexArray left_neighbors_, MetricArray contravariant_vectors_,
+        ScalarArray inverse_jacobian_, const Equations& eq_, DataArray u_,
+        DataArray surface_flux_, std::array<std::size_t, NDIMS> n_elems_)
     requires(NDIMS == 2)
   {
     InterfaceFluxFunctor functor(left_neighbors_, contravariant_vectors_,
@@ -89,4 +85,4 @@ struct InterfaceFluxFunctor {
   ScalarArray inverse_jacobian;
 };
 
-}  // namespace DGSEM
+} // namespace DGSEM

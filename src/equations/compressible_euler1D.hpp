@@ -13,13 +13,13 @@ template <class T>
 class CompressibleEuler1D : public Equations1DBase {
 public:
   using value_type = T;
-  CompressibleEuler1D(const T &gamma) : gamma_(gamma) {}
+  CompressibleEuler1D(const T& gamma) : gamma_(gamma) {}
 
   constexpr static std::size_t NDIMS = 1;
   constexpr static std::size_t NVARS = 3;
 
   KOKKOS_INLINE_FUNCTION
-  std::array<value_type, NVARS> flux(const std::array<value_type, NVARS> &u,
+  std::array<value_type, NVARS> flux(const std::array<value_type, NVARS>& u,
                                      std::size_t dim) const {
     value_type rho = u[0];
     value_type mom = u[1];
@@ -31,8 +31,8 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION
-  value_type get_wave_speed(const std::array<value_type, NVARS> &u_ll,
-                            const std::array<value_type, NVARS> &u_rr) const {
+  value_type get_wave_speed(const std::array<value_type, NVARS>& u_ll,
+                            const std::array<value_type, NVARS>& u_rr) const {
     value_type rho_ll = u_ll[0];
     value_type mom_ll = u_ll[1];
     value_type rhoE_ll = u_ll[2];

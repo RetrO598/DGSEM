@@ -18,9 +18,9 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
   constexpr static std::size_t NVARS = traits::NVARS;
 
   template <class IndexArray, class ArrayU, class ArrayFlux>
-  KOKKOS_INLINE_FUNCTION static void interface_flux(
-      const IndexArray& left_neighbors, const Equations& eq, std::size_t ielem,
-      const ArrayU& u, ArrayFlux& surface_flux) {
+  KOKKOS_INLINE_FUNCTION static void
+  interface_flux(const IndexArray& left_neighbors, const Equations& eq,
+                 std::size_t ielem, const ArrayU& u, ArrayFlux& surface_flux) {
     std::size_t left_elem = left_neighbors(ielem, 0);
     if (left_elem != static_cast<std::size_t>(-1)) {
       std::array<T, NVARS> u_ll{};
@@ -60,11 +60,12 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
   }
 
   template <class IndexArray, class ArrayU, class ArrayFlux>
-  KOKKOS_INLINE_FUNCTION static void interface_flux(
-      const IndexArray& neighbors, const MetricArray& contravariant_vectors,
-      const ScalarArray& inverse_jacobian, const Equations& eq,
-      std::size_t ielem, std::size_t jelem, const ArrayU& u,
-      ArrayFlux& surface_flux) {
+  KOKKOS_INLINE_FUNCTION static void
+  interface_flux(const IndexArray& neighbors,
+                 const MetricArray& contravariant_vectors,
+                 const ScalarArray& inverse_jacobian, const Equations& eq,
+                 std::size_t ielem, std::size_t jelem, const ArrayU& u,
+                 ArrayFlux& surface_flux) {
     const std::size_t left_i = neighbors(ielem, jelem, 0, 0);
     const std::size_t left_j = neighbors(ielem, jelem, 0, 1);
     if (left_i != static_cast<std::size_t>(-1)) {
@@ -123,4 +124,4 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
   }
 };
 
-}  // namespace DGSEM
+} // namespace DGSEM

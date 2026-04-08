@@ -9,12 +9,10 @@
 namespace DGSEM {
 template <class T, std::size_t NDIM>
 class StructuredMesh {
- public:
+public:
   StructuredMesh(const std::array<T, 2 * NDIM>& domain_,
                  const std::array<std::size_t, NDIM> n_cells_)
-      : domain(domain_),
-        n_cells(n_cells_),
-        num_boundarys(2 * NDIM),
+      : domain(domain_), n_cells(n_cells_), num_boundarys(2 * NDIM),
         nelem(std::accumulate(n_cells_.begin(), n_cells_.end(), 1.0,
                               std::multiplies<std::size_t>())) {}
   KOKKOS_INLINE_FUNCTION
@@ -39,11 +37,11 @@ class StructuredMesh {
     return T{};
   }
 
- private:
+private:
   std::size_t num_boundarys;
-  std::array<T, 2 * NDIM> domain;  // [xmin, xmax, ymin, ymax, zmin, zmax]
+  std::array<T, 2 * NDIM> domain; // [xmin, xmax, ymin, ymax, zmin, zmax]
   std::array<std::size_t, NDIM> n_cells;
   std::size_t nelem;
 };
 
-}  // namespace DGSEM
+} // namespace DGSEM

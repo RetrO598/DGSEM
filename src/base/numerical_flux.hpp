@@ -199,9 +199,10 @@ struct flux_godunov<equations::LinearScalarAdvection1D<T>> {
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
-  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS> numerical_flux(
-      const equations::LinearScalarAdvection1D<T>& eq,
-      const std::array<T, NVARS>& u_ll, const std::array<T, NVARS>& u_rr) {
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::LinearScalarAdvection1D<T>& eq,
+                 const std::array<T, NVARS>& u_ll,
+                 const std::array<T, NVARS>& u_rr) {
     auto speed = eq.get_wave_speed();
     if (speed >= 0) {
       return eq.flux(u_ll, 0);
@@ -220,9 +221,10 @@ struct HLLCFlux<equations::CompressibleEuler1D<T>> {
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
-  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS> numerical_flux(
-      const equations::CompressibleEuler1D<T>& eq,
-      const std::array<T, NVARS>& u_ll, const std::array<T, NVARS>& u_rr) {
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::CompressibleEuler1D<T>& eq,
+                 const std::array<T, NVARS>& u_ll,
+                 const std::array<T, NVARS>& u_rr) {
     T rho_ll = u_ll[0];
     T mom_ll = u_ll[1];
     T rhoE_ll = u_ll[2];
@@ -314,9 +316,10 @@ struct ChandrashekarFlux<equations::CompressibleEuler1D<T>> {
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
-  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS> numerical_flux(
-      const equations::CompressibleEuler1D<T>& eq,
-      const std::array<T, NVARS>& u_ll, const std::array<T, NVARS>& u_rr) {
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::CompressibleEuler1D<T>& eq,
+                 const std::array<T, NVARS>& u_ll,
+                 const std::array<T, NVARS>& u_rr) {
     T rho_ll = u_ll[0];
     T mom_ll = u_ll[1];
     T rhoE_ll = u_ll[2];
@@ -361,10 +364,11 @@ struct ChandrashekarFlux<equations::CompressibleEuler2D<T>> {
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
-  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS> numerical_flux(
-      const equations::CompressibleEuler2D<T>& eq,
-      const std::array<T, NVARS>& u_ll, const std::array<T, NVARS>& u_rr,
-      const std::array<T, NDIMS>& normal) {
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::CompressibleEuler2D<T>& eq,
+                 const std::array<T, NVARS>& u_ll,
+                 const std::array<T, NVARS>& u_rr,
+                 const std::array<T, NDIMS>& normal) {
     const T rho_ll = u_ll[0];
     const T rhou_ll = u_ll[1];
     const T rhov_ll = u_ll[2];
@@ -423,9 +427,10 @@ struct ChandrashekarESFlux<equations::CompressibleEuler1D<T>> {
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
 
-  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS> numerical_flux(
-      const equations::CompressibleEuler1D<T>& eq,
-      const std::array<T, NVARS>& u_ll, const std::array<T, NVARS>& u_rr) {
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::CompressibleEuler1D<T>& eq,
+                 const std::array<T, NVARS>& u_ll,
+                 const std::array<T, NVARS>& u_rr) {
     T rho_ll = u_ll[0];
     T mom_ll = u_ll[1];
     T rhoE_ll = u_ll[2];
@@ -477,4 +482,4 @@ struct ChandrashekarESFlux<equations::CompressibleEuler1D<T>> {
     return {f1, f2, f3};
   }
 };
-}  // namespace DGSEM
+} // namespace DGSEM

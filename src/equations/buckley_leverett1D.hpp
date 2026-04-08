@@ -16,12 +16,12 @@ public:
   constexpr static std::size_t NVARS = 1;
 
   KOKKOS_INLINE_FUNCTION
-  T flux(const T &u, std::size_t dim) const {
+  T flux(const T& u, std::size_t dim) const {
     return 4.0 * u * u / (4.0 * u * u + (1.0 - u) * (1.0 - u));
   }
 
   KOKKOS_INLINE_FUNCTION
-  std::array<value_type, NVARS> flux(const std::array<value_type, NVARS> &u,
+  std::array<value_type, NVARS> flux(const std::array<value_type, NVARS>& u,
                                      std::size_t idim) const {
     return {4.0 * u[0] * u[0] /
             (4.0 * u[0] * u[0] + (1.0 - u[0]) * (1.0 - u[0]))};

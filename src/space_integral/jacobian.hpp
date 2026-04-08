@@ -77,4 +77,4 @@ struct JacobianProjFunctor {
   DataArray du;
   ScalarArray inverse_jacobian;
 };
-}  // namespace DGSEM
+} // namespace DGSEM

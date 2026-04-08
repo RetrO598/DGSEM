@@ -44,7 +44,7 @@ struct InitialFunctor {
                          functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const int &elem) const
+  KOKKOS_INLINE_FUNCTION void operator()(const int& elem) const
     requires(NDIMS == 1)
   {
     std::array<T, NDIMS> coord;
@@ -61,8 +61,8 @@ struct InitialFunctor {
     }
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const int &ielem,
-                                         const int &jelem) const
+  KOKKOS_INLINE_FUNCTION void operator()(const int& ielem,
+                                         const int& jelem) const
     requires(NDIMS == 2)
   {
     std::array<T, NDIMS> coord;

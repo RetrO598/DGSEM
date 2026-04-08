@@ -16,8 +16,8 @@ struct BCDispatcher;
 template <class BC, class Equations, class SurfaceFlux, class Mesh, class T,
           class ArrayU, class ArrayFlux>
 struct BCDispatcher<1, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ArrayFlux> {
-  static void dispatch(const BC &bc, const Mesh &mesh, const Equations &eq,
-                       const ArrayU &u, ArrayFlux &surface_flux,
+  static void dispatch(const BC& bc, const Mesh& mesh, const Equations& eq,
+                       const ArrayU& u, ArrayFlux& surface_flux,
                        std::size_t face_id, T time) {
     // 1D case: No parallel_for needed for many elements,
     // but we use a single-threaded kernel to access device data.
@@ -32,8 +32,8 @@ struct BCDispatcher<1, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ArrayFlux> {
 template <class BC, class Equations, class SurfaceFlux, class Mesh, class T,
           class ArrayU, class ArrayFlux>
 struct BCDispatcher<2, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ArrayFlux> {
-  static void dispatch(const BC &bc, const Mesh &mesh, const Equations &eq,
-                       const ArrayU &u, ArrayFlux &surface_flux,
+  static void dispatch(const BC& bc, const Mesh& mesh, const Equations& eq,
+                       const ArrayU& u, ArrayFlux& surface_flux,
                        std::size_t face_id, T time) {
     auto n_cells = mesh.get_num_cells();
     std::size_t range = (face_id < 2) ? n_cells[1] : n_cells[0];
@@ -55,7 +55,7 @@ struct BoundarySet {
   BoundarySet(FaceBCs... bcs) : faces_(std::move(bcs)...) {}
 
   template <std::size_t I = 0, typename F>
-  void tuple_switch(std::size_t idx, F &&f) const {
+  void tuple_switch(std::size_t idx, F&& f) const {
     if constexpr (I < NFACES) {
       if (I == idx) {
         f(std::get<I>(faces_));
@@ -70,10 +70,10 @@ struct BoundarySet {
   // Kokkos apply
   template <class Equations, class SurfaceFlux, class Mesh, class T,
             std::size_t NDIMS, class ArrayU, class ArrayFlux>
-  void apply(const Mesh &mesh, const Equations &eq, const ArrayU &u,
-             ArrayFlux &surface_flux, std::size_t face_id, T time) const {
+  void apply(const Mesh& mesh, const Equations& eq, const ArrayU& u,
+             ArrayFlux& surface_flux, std::size_t face_id, T time) const {
     if constexpr (NFACES > 0) {
-      tuple_switch(face_id, [&](const auto &bc) {
+      tuple_switch(face_id, [&](const auto& bc) {
         BCDispatcher<NDIMS, std::decay_t<decltype(bc)>, Equations, SurfaceFlux,
                      Mesh, T, ArrayU, ArrayFlux>::dispatch(bc, mesh, eq, u,
                                                            surface_flux,
@@ -88,8 +88,8 @@ struct PeriodicBC {
   template <class Equations, class SurfaceFlux, class Mesh, class T,
             std::size_t NDIMS, class ArrayU, class ArrayFlux>
   KOKKOS_INLINE_FUNCTION void
-  apply_device(const Mesh &mesh, const Equations &eq, const ArrayU &u,
-               ArrayFlux &surface_flux, std::size_t face_id, T time,
+  apply_device(const Mesh& mesh, const Equations& eq, const ArrayU& u,
+               ArrayFlux& surface_flux, std::size_t face_id, T time,
                int index = 0) const {
     // Periodic BCs are usually handled by the interface flux logic with
     // wrapping
@@ -107,16 +107,15 @@ struct DirichletBC {
   template <class Equations, class SurfaceFlux, class Mesh, class T,
             std::size_t NDIMS, class ArrayU, class ArrayFlux>
   KOKKOS_INLINE_FUNCTION void
-  apply_device(const Mesh &mesh, const Equations &eq, const ArrayU &u,
-               ArrayFlux &surface_flux, std::size_t face_id, T time,
+  apply_device(const Mesh& mesh, const Equations& eq, const ArrayU& u,
+               ArrayFlux& surface_flux, std::size_t face_id, T time,
                int index = 0) const {
     using traits = equations::EquationTraits<Equations>;
     constexpr std::size_t NVARS = traits::NVARS;
 
-    auto get_u_outer_device = [&](const std::array<T, NDIMS> &coord, T t) {
+    auto get_u_outer_device = [&](const std::array<T, NDIMS>& coord, T t) {
       std::array<T, NVARS> u_out{};
-      if constexpr (std::is_invocable_v<Func, const std::array<T, NDIMS> &,
-                                        T>) {
+      if constexpr (std::is_invocable_v<Func, const std::array<T, NDIMS>&, T>) {
         u_out = func(coord, t);
       } else {
         for (std::size_t var = 0; var < NVARS; ++var) {

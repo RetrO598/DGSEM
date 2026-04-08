@@ -11,7 +11,6 @@
 #include <tuple>
 #include <utility>
 
-
 namespace DGSEM {
 namespace Basis {
 
@@ -121,7 +120,7 @@ std::array<T, NNodes> barycenteric_weights(std::span<const T, NNodes> nodes) {
     }
   }
 
-  for (auto &weight : weights) {
+  for (auto& weight : weights) {
     weight = 1.0 / weight;
   }
 
@@ -147,7 +146,7 @@ lagrange_interpolating_polynomials(T x, std::span<const T, NNodes> nodes,
 
   T total = std::accumulate(polynomials.begin(), polynomials.end(), 0.0);
 
-  for (auto &poly : polynomials) {
+  for (auto& poly : polynomials) {
     poly /= total;
   }
 

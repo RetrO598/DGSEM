@@ -16,7 +16,7 @@ struct SurfaceIntegral<Basis, Equations, StructuredElementContainer<T, 1>> {
 
   template <class ArrayU, class ArrayFlux>
   KOKKOS_INLINE_FUNCTION constexpr static void
-  integral(std::size_t ielem, ArrayU &du, const ArrayFlux &surface_flux,
+  integral(std::size_t ielem, ArrayU& du, const ArrayFlux& surface_flux,
            const BasisData& basis_data) {
     T factor_1 = basis_data.boundary_interpolation_left[0];
     T factor_2 = basis_data.boundary_interpolation_right[Basis::NNodes - 1];
@@ -49,8 +49,8 @@ struct SurfaceIntegral<Basis, Equations, StructuredElementContainer<T, 2>> {
 
   template <class ArrayU, class ArrayFlux>
   KOKKOS_INLINE_FUNCTION constexpr static void
-  integral(std::size_t ielem, std::size_t jelem, ArrayU &du,
-           const ArrayFlux &surface_flux, const BasisData& basis_data) {
+  integral(std::size_t ielem, std::size_t jelem, ArrayU& du,
+           const ArrayFlux& surface_flux, const BasisData& basis_data) {
     const T factor_1 = basis_data.boundary_interpolation_left[0];
     const T factor_2 =
         basis_data.boundary_interpolation_right[Basis::NNodes - 1];

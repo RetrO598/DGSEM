@@ -24,13 +24,13 @@ struct VolumeIntegralFunctor {
   using traits = equations::EquationTraits<Equations>;
   using DataArray = typename solution_type_traits<T, NDIMS>::DataArray;
 
-  VolumeIntegralFunctor(DataArray u_, DataArray du_, const Equations &eq_,
-                        const VolumeFlux &flux_,
+  VolumeIntegralFunctor(DataArray u_, DataArray du_, const Equations& eq_,
+                        const VolumeFlux& flux_,
                         std::array<std::size_t, NDIMS> n_elems_)
       : u(u_), du(du_), eq(eq_), flux(flux_), n_elems(n_elems_) {}
 
-  static void apply(DataArray u_, DataArray du_, const Equations &eq_,
-                    const VolumeFlux &flux_,
+  static void apply(DataArray u_, DataArray du_, const Equations& eq_,
+                    const VolumeFlux& flux_,
                     std::array<std::size_t, NDIMS> n_elems_)
     requires(NDIMS == 1)
   {
@@ -39,8 +39,8 @@ struct VolumeIntegralFunctor {
     Kokkos::parallel_for("volume_integral", n_elems_[0], functor);
   }
 
-  static void apply(DataArray u_, DataArray du_, const Equations &eq_,
-                    const VolumeFlux &flux_,
+  static void apply(DataArray u_, DataArray du_, const Equations& eq_,
+                    const VolumeFlux& flux_,
                     std::array<std::size_t, NDIMS> n_elems_)
     requires(NDIMS == 2)
   {
@@ -52,14 +52,14 @@ struct VolumeIntegralFunctor {
                          functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const int &ielem) const
+  KOKKOS_INLINE_FUNCTION void operator()(const int& ielem) const
     requires(NDIMS == 1)
   {
     flux(ielem, eq, u, du);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const int &ielem,
-                                         const int &jelem) const
+  KOKKOS_INLINE_FUNCTION void operator()(const int& ielem,
+                                         const int& jelem) const
     requires(NDIMS == 2)
   {
     flux(ielem, jelem, eq, u, du);

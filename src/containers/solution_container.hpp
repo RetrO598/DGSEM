@@ -19,22 +19,22 @@ struct SolutionInitializer<T, NVARS, 1> {
   using DataArrayHost = solution_type_traits<T, 1>::DataArrayHost;
 
   inline constexpr static void
-  initialize_u(const std::array<std::size_t, 1> &n_cells, std::size_t nnodes,
-               DataArray &u_device) {
+  initialize_u(const std::array<std::size_t, 1>& n_cells, std::size_t nnodes,
+               DataArray& u_device) {
     Kokkos::realloc(u_device, n_cells[0], nnodes, NVARS);
     Kokkos::deep_copy(u_device, 0.0);
   }
 
   inline constexpr static void
-  initialize_du(const std::array<std::size_t, 1> &n_cells, std::size_t nnodes,
-                DataArray &du_device) {
+  initialize_du(const std::array<std::size_t, 1>& n_cells, std::size_t nnodes,
+                DataArray& du_device) {
     Kokkos::realloc(du_device, n_cells[0], nnodes, NVARS);
     Kokkos::deep_copy(du_device, 0.0);
   }
 
   inline constexpr static void
-  initialize_surface_flux_value(const std::array<std::size_t, 1> &n_cells,
-                                std::size_t nnodes, DataArray &surface_device) {
+  initialize_surface_flux_value(const std::array<std::size_t, 1>& n_cells,
+                                std::size_t nnodes, DataArray& surface_device) {
     Kokkos::realloc(surface_device, n_cells[0], 2, NVARS);
     Kokkos::deep_copy(surface_device, 0.0);
   }
@@ -46,22 +46,22 @@ struct SolutionInitializer<T, NVARS, 2> {
   using DataArrayHost = solution_type_traits<T, 2>::DataArrayHost;
 
   inline constexpr static void
-  initialize_u(const std::array<std::size_t, 2> &n_cells, std::size_t ndofs,
-               DataArray &u_device) {
+  initialize_u(const std::array<std::size_t, 2>& n_cells, std::size_t ndofs,
+               DataArray& u_device) {
     Kokkos::realloc(u_device, n_cells[0], n_cells[1], ndofs, NVARS);
     Kokkos::deep_copy(u_device, 0.0);
   }
 
   inline constexpr static void
-  initialize_du(const std::array<std::size_t, 2> &n_cells, std::size_t ndofs,
-                DataArray &du_device) {
+  initialize_du(const std::array<std::size_t, 2>& n_cells, std::size_t ndofs,
+                DataArray& du_device) {
     Kokkos::realloc(du_device, n_cells[0], n_cells[1], ndofs, NVARS);
     Kokkos::deep_copy(du_device, 0.0);
   }
 
-  inline constexpr static void initialize_surface_flux_value(
-      const std::array<std::size_t, 2> &n_cells, std::size_t nnodes,
-      DataArray &surface_device) {
+  inline constexpr static void
+  initialize_surface_flux_value(const std::array<std::size_t, 2>& n_cells,
+                                std::size_t nnodes, DataArray& surface_device) {
     Kokkos::realloc(surface_device, n_cells[0], n_cells[1], 4 * nnodes, NVARS);
     Kokkos::deep_copy(surface_device, 0.0);
   }
@@ -78,7 +78,7 @@ struct Solution {
   using DataArray = solution_type_traits<value_type, NDIMS>::DataArray;
   using DataArrayHost = solution_type_traits<value_type, NDIMS>::DataArrayHost;
 
-  Solution(const Mesh &mesh) {
+  Solution(const Mesh& mesh) {
     auto n_cells = mesh.get_num_cells();
     constexpr std::size_t ndofs =
         (NDIMS == 1) ? Basis::NNodes : Basis::NNodes * Basis::NNodes;

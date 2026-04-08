@@ -14,8 +14,8 @@ class LobattoLegendreBasis {
 public:
   static constexpr std::size_t NNodes = Polydeg + 1;
 
-  using View1D = Kokkos::View<T *, Device>;
-  using View2D = Kokkos::View<T **, Device>;
+  using View1D = Kokkos::View<T*, Device>;
+  using View2D = Kokkos::View<T**, Device>;
 
   struct DeviceData {
     static constexpr std::size_t NNodes = Polydeg + 1;

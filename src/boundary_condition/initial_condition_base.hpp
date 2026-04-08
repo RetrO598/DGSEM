@@ -23,7 +23,7 @@ public:
   KOKKOS_INLINE_FUNCTION
   std::array<value_type, NVARS>
   get_initial(std::array<value_type, NDIMS> coord) const {
-    return static_cast<const Derived *>(this)->operator()(coord);
+    return static_cast<const Derived*>(this)->operator()(coord);
   }
 };
 

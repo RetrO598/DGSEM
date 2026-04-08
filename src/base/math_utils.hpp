@@ -3,7 +3,6 @@
 #include <cmath>
 #include <type_traits>
 
-
 namespace DGSEM {
 
 template <typename T>
@@ -24,4 +23,4 @@ KOKKOS_INLINE_FUNCTION T ln_mean(T x, T y) {
     return (y - x) / std::log(y / x);
   }
 }
-}  // namespace DGSEM
+} // namespace DGSEM

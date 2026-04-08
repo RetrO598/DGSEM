@@ -10,16 +10,16 @@ class LinearScalarAdvection1D : public Equations1DBase {
 
 public:
   using value_type = T;
-  LinearScalarAdvection1D(const T &speed_) : speed(speed_) {}
+  LinearScalarAdvection1D(const T& speed_) : speed(speed_) {}
 
   constexpr static std::size_t NDIMS = 1;
   constexpr static std::size_t NVARS = 1;
 
   KOKKOS_INLINE_FUNCTION
-  T flux(const T &u, std::size_t dim) const { return speed * u; }
+  T flux(const T& u, std::size_t dim) const { return speed * u; }
 
   KOKKOS_INLINE_FUNCTION
-  std::array<value_type, NVARS> flux(const std::array<value_type, NVARS> &u,
+  std::array<value_type, NVARS> flux(const std::array<value_type, NVARS>& u,
                                      std::size_t dim) const {
     return {speed * u[0]};
   }

@@ -16,7 +16,7 @@ namespace DGSEM {
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 class StructuredSolver {
- public:
+public:
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename traits::value_type;
   constexpr static std::size_t NDIMS = traits::NDIMS;
@@ -32,10 +32,7 @@ class StructuredSolver {
   StructuredSolver(const Equations& eq_, const Mesh& mesh_,
                    const ElementCache& element_,
                    const BoundarySetType& boundary_set_)
-      : eq(eq_),
-        mesh(mesh_),
-        element(element_),
-        boundary_set(boundary_set_),
+      : eq(eq_), mesh(mesh_), element(element_), boundary_set(boundary_set_),
         n_dofs(std::pow(Basis::NNodes, NDIMS)) {
     n_cells = mesh.get_num_cells();
   }
@@ -68,7 +65,7 @@ class StructuredSolver {
 
   std::size_t get_ndofs() const { return n_dofs; }
 
- private:
+private:
   BoundarySetType boundary_set;
   Equations eq;
   Mesh mesh;
@@ -200,4 +197,4 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   apply_jacobian(sol);
 }
 
-}  // namespace DGSEM
+} // namespace DGSEM

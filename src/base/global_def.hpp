@@ -1,7 +1,7 @@
 #pragma once
-#include <array>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Core_fwd.hpp>
+#include <array>
 #include <cstddef>
 
 namespace DGSEM {
@@ -107,11 +107,14 @@ struct SubcellNormalVectors<T, 2> {
     NormalArray2 normal_2;
   };
 
-  void allocate(const std::array<std::size_t, 2>& n_cells, std::size_t n_nodes) {
+  void allocate(const std::array<std::size_t, 2>& n_cells,
+                std::size_t n_nodes) {
     Kokkos::realloc(normal_1, n_cells[0], n_cells[1], n_nodes - 1, n_nodes, 2);
     Kokkos::realloc(normal_2, n_cells[0], n_cells[1], n_nodes, n_nodes - 1, 2);
-    Kokkos::realloc(normal_1_host, n_cells[0], n_cells[1], n_nodes - 1, n_nodes, 2);
-    Kokkos::realloc(normal_2_host, n_cells[0], n_cells[1], n_nodes, n_nodes - 1, 2);
+    Kokkos::realloc(normal_1_host, n_cells[0], n_cells[1], n_nodes - 1, n_nodes,
+                    2);
+    Kokkos::realloc(normal_2_host, n_cells[0], n_cells[1], n_nodes, n_nodes - 1,
+                    2);
   }
 
   template <class Basis, class MatrixHost>
@@ -220,7 +223,8 @@ struct SubcellNormalVectors<T, 3> {
     NormalArray3 normal_3;
   };
 
-  void allocate(const std::array<std::size_t, 3>& n_cells, std::size_t n_nodes) {
+  void allocate(const std::array<std::size_t, 3>& n_cells,
+                std::size_t n_nodes) {
     Kokkos::realloc(normal_1, n_cells[0], n_cells[1], n_cells[2], n_nodes - 1,
                     n_nodes, n_nodes, 3);
     Kokkos::realloc(normal_2, n_cells[0], n_cells[1], n_cells[2], n_nodes,
@@ -229,10 +233,10 @@ struct SubcellNormalVectors<T, 3> {
                     n_nodes, n_nodes - 1, 3);
     Kokkos::realloc(normal_1_host, n_cells[0], n_cells[1], n_cells[2],
                     n_nodes - 1, n_nodes, n_nodes, 3);
-    Kokkos::realloc(normal_2_host, n_cells[0], n_cells[1], n_cells[2],
-                    n_nodes, n_nodes - 1, n_nodes, 3);
-    Kokkos::realloc(normal_3_host, n_cells[0], n_cells[1], n_cells[2],
-                    n_nodes, n_nodes, n_nodes - 1, 3);
+    Kokkos::realloc(normal_2_host, n_cells[0], n_cells[1], n_cells[2], n_nodes,
+                    n_nodes - 1, n_nodes, 3);
+    Kokkos::realloc(normal_3_host, n_cells[0], n_cells[1], n_cells[2], n_nodes,
+                    n_nodes, n_nodes - 1, 3);
   }
 
   void sync_to_device() {
@@ -252,4 +256,4 @@ struct SubcellNormalVectors<T, 3> {
   NormalArray2 normal_2;
   NormalArray3 normal_3;
 };
-}  // namespace DGSEM
+} // namespace DGSEM

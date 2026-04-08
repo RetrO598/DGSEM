@@ -12,7 +12,7 @@ namespace equations {
 
 template <class T>
 class CompressibleEuler2D : public Equations2DBase {
- public:
+public:
   using value_type = T;
 
   explicit CompressibleEuler2D(const T& gamma = static_cast<T>(1.4))
@@ -44,9 +44,9 @@ class CompressibleEuler2D : public Equations2DBase {
   }
 
   KOKKOS_INLINE_FUNCTION
-  std::array<value_type, NVARS> flux(
-      const std::array<value_type, NVARS>& u,
-      const std::array<value_type, NDIMS>& normal) const {
+  std::array<value_type, NVARS>
+  flux(const std::array<value_type, NVARS>& u,
+       const std::array<value_type, NDIMS>& normal) const {
     const auto flux_x = flux(u, 0);
     const auto flux_y = flux(u, 1);
     std::array<value_type, NVARS> normal_flux{};
@@ -137,9 +137,9 @@ class CompressibleEuler2D : public Equations2DBase {
   KOKKOS_INLINE_FUNCTION
   value_type get_gamma() const { return gamma_; }
 
- private:
+private:
   value_type gamma_ = static_cast<value_type>(1.4);
 };
 
-}  // namespace equations
-}  // namespace DGSEM
+} // namespace equations
+} // namespace DGSEM
