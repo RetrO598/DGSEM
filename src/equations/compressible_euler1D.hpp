@@ -25,8 +25,9 @@ public:
     value_type mom = u[1];
     value_type rhoE = u[2];
     value_type u_vel = mom / rho;
-    value_type gamma = 1.4;
-    value_type p = (gamma - 1.0) * (rhoE - 0.5 * rho * u_vel * u_vel);
+    value_type gamma = static_cast<value_type>(1.4);
+    value_type p = (gamma - static_cast<value_type>(1.0)) *
+                   (rhoE - static_cast<value_type>(0.5) * rho * u_vel * u_vel);
     return {mom, mom * u_vel + p, u_vel * (rhoE + p)};
   }
 
@@ -43,9 +44,13 @@ public:
     value_type u_vel_rr = mom_rr / rho_rr;
     value_type gamma = gamma_;
     value_type p_ll =
-        (gamma - 1.0) * (rhoE_ll - 0.5 * rho_ll * u_vel_ll * u_vel_ll);
+        (gamma - static_cast<value_type>(1.0)) *
+        (rhoE_ll -
+         static_cast<value_type>(0.5) * rho_ll * u_vel_ll * u_vel_ll);
     value_type p_rr =
-        (gamma - 1.0) * (rhoE_rr - 0.5 * rho_rr * u_vel_rr * u_vel_rr);
+        (gamma - static_cast<value_type>(1.0)) *
+        (rhoE_rr -
+         static_cast<value_type>(0.5) * rho_rr * u_vel_rr * u_vel_rr);
     value_type a_ll = std::sqrt(gamma * p_ll / rho_ll);
     value_type a_rr = std::sqrt(gamma * p_rr / rho_rr);
     return std::max(std::abs(u_vel_ll), std::abs(u_vel_rr)) +
@@ -56,7 +61,7 @@ public:
   value_type get_gamma() const { return gamma_; }
 
 private:
-  value_type gamma_ = 1.4;
+  value_type gamma_ = static_cast<value_type>(1.4);
 };
 } // namespace equations
 } // namespace DGSEM

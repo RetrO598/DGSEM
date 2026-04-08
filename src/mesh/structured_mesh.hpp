@@ -13,7 +13,7 @@ public:
   StructuredMesh(const std::array<T, 2 * NDIM>& domain_,
                  const std::array<std::size_t, NDIM> n_cells_)
       : domain(domain_), n_cells(n_cells_), num_boundarys(2 * NDIM),
-        nelem(std::accumulate(n_cells_.begin(), n_cells_.end(), 1.0,
+        nelem(std::accumulate(n_cells_.begin(), n_cells_.end(), std::size_t{1},
                               std::multiplies<std::size_t>())) {}
   KOKKOS_INLINE_FUNCTION
   std::array<T, 2 * NDIM> get_domain_size() const { return domain; }

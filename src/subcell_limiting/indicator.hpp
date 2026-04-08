@@ -83,8 +83,9 @@ struct IndicatorValueAccessor<equations::CompressibleEuler1D<T>> {
     value_type mom = u(ielem, inode, 1);
     value_type rhoE = u(ielem, inode, 2);
     value_type u_vel = mom / rho;
-    value_type gamma = 1.4;
-    value_type p = (gamma - 1.0) * (rhoE - 0.5 * rho * u_vel * u_vel);
+    value_type gamma = static_cast<value_type>(1.4);
+    value_type p = (gamma - static_cast<value_type>(1.0)) *
+                   (rhoE - static_cast<value_type>(0.5) * rho * u_vel * u_vel);
     return p * rho;
   }
 };
@@ -104,9 +105,10 @@ struct IndicatorValueAccessor<equations::CompressibleEuler2D<T>> {
     const value_type rhoE = u(ielem, jelem, dof, 3);
     const value_type u_vel = rhou / rho;
     const value_type v_vel = rhov / rho;
-    const value_type gamma = 1.4;
-    const value_type p =
-        (gamma - 1.0) * (rhoE - 0.5 * rho * (u_vel * u_vel + v_vel * v_vel));
+    const value_type gamma = static_cast<value_type>(1.4);
+    const value_type p = (gamma - static_cast<value_type>(1.0)) *
+                         (rhoE - static_cast<value_type>(0.5) * rho *
+                                     (u_vel * u_vel + v_vel * v_vel));
     return p * rho;
   }
 };
@@ -129,7 +131,8 @@ struct HGIndicator<Basis, Equations, 1> {
               BasisData basis_data_)
       : alpha_max(alpha_max_), alpha_min(alpha_min_),
         alpha_smooth(alpha_smooth_), basis_data(basis_data_) {
-    threshold = 0.5 * std::pow(10.0, -1.8 * std::pow(Basis::NNodes, 0.25));
+    threshold = static_cast<value_type>(0.5) *
+                std::pow(10.0, -1.8 * std::pow(Basis::NNodes, 0.25));
     s = std::log((1.0 - 0.0001) / 0.0001);
   }
 
@@ -159,9 +162,9 @@ struct HGIndicator<Basis, Equations, 1> {
               modal, basis_.inverse_vandermonde_legendre, indicator);
 
           // 3. energy
-          value_type total = 0;
-          value_type clip1 = 0;
-          value_type clip2 = 0;
+          value_type total = value_type{0.0};
+          value_type clip1 = value_type{0.0};
+          value_type clip2 = value_type{0.0};
 
           for (int i = 0; i < Basis::NNodes; ++i)
             total += modal[i] * modal[i];
@@ -172,19 +175,22 @@ struct HGIndicator<Basis, Equations, 1> {
           for (int i = 0; i < Basis::NNodes - 2; ++i)
             clip2 += modal[i] * modal[i];
 
-          value_type e1 = (total != 0) ? (total - clip1) / total : 0;
-          value_type e2 = (clip1 != 0) ? (clip1 - clip2) / clip1 : 0;
+          value_type e1 =
+              (total != value_type{}) ? (total - clip1) / total : value_type{};
+          value_type e2 =
+              (clip1 != value_type{}) ? (clip1 - clip2) / clip1 : value_type{};
 
           value_type energy = e1 > e2 ? e1 : e2;
 
-          value_type alpha_e =
-              1.0 / (1.0 + exp(-s_ / threshold_ * (energy - threshold_)));
+          value_type alpha_e = static_cast<value_type>(1.0) /
+                               (static_cast<value_type>(1.0) +
+                                exp(-s_ / threshold_ * (energy - threshold_)));
 
           if (alpha_e < alpha_min_)
-            alpha_e = 0;
+            alpha_e = value_type{};
 
-          if (alpha_e > 1.0 - alpha_min_)
-            alpha_e = 1.0;
+          if (alpha_e > static_cast<value_type>(1.0) - alpha_min_)
+            alpha_e = static_cast<value_type>(1.0);
 
           if (alpha_e > alpha_max_)
             alpha_e = alpha_max_;
@@ -194,8 +200,8 @@ struct HGIndicator<Basis, Equations, 1> {
   }
 
 private:
-  value_type alpha_max = 0.5;
-  value_type alpha_min = 0.001;
+  value_type alpha_max = static_cast<value_type>(0.5);
+  value_type alpha_min = static_cast<value_type>(0.001);
   bool alpha_smooth = false;
   BasisData basis_data;
 
@@ -217,8 +223,14 @@ struct HGIndicator<Basis, Equations, 2> {
               BasisData basis_data_)
       : alpha_max(alpha_max_), alpha_min(alpha_min_),
         alpha_smooth(alpha_smooth_), basis_data(basis_data_) {
-    threshold = 0.5 * std::pow(10.0, -1.8 * std::pow(Basis::NNodes, 0.25));
-    s = std::log((1.0 - 0.0001) / 0.0001);
+    threshold = static_cast<value_type>(0.5) *
+                std::pow(static_cast<value_type>(10.0),
+                         static_cast<value_type>(-1.8) *
+                             std::pow(static_cast<value_type>(Basis::NNodes),
+                                      static_cast<value_type>(0.25)));
+    s = std::log(
+        (static_cast<value_type>(1.0) - static_cast<value_type>(0.0001)) /
+        static_cast<value_type>(0.0001));
   }
 
   template <class ArrayU, class ElementArray>
@@ -321,21 +333,22 @@ struct HGIndicator<Basis, Equations, 2> {
 
           value_type energy = std::max(energy_frac_1, energy_frac_2);
 
-          value_type alpha_e =
-              1.0 / (1.0 + exp(-s_ / threshold_ * (energy - threshold_)));
+          value_type alpha_e = static_cast<value_type>(1.0) /
+                               (static_cast<value_type>(1.0) +
+                                exp(-s_ / threshold_ * (energy - threshold_)));
 
           if (alpha_e < alpha_min_)
             alpha_e = 0.0;
-          if (alpha_e > 1.0 - alpha_min_)
-            alpha_e = 1.0;
+          if (alpha_e > static_cast<value_type>(1.0) - alpha_min_)
+            alpha_e = static_cast<value_type>(1.0);
 
           alpha(ielem, jelem) = std::min(alpha_max_, alpha_e);
         });
   }
 
 private:
-  value_type alpha_max = 0.5;
-  value_type alpha_min = 0.001;
+  value_type alpha_max = static_cast<value_type>(0.5);
+  value_type alpha_min = static_cast<value_type>(0.001);
   bool alpha_smooth = false;
   BasisData basis_data;
 

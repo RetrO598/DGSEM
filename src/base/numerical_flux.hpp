@@ -32,8 +32,8 @@ struct LaxFriedrichsFlux<equations::LinearScalarAdvection1D<T>> {
     std::array<T, NVARS> flux_R = eq.flux(uR, 0);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] =
-          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
     }
     return flux;
   }
@@ -57,8 +57,8 @@ struct LaxFriedrichsFlux<equations::BuckleyLeverett1D<T>> {
     std::array<T, NVARS> flux_R = eq.flux(uR, 0);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] =
-          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
     }
     return flux;
   }
@@ -81,8 +81,8 @@ struct LaxFriedrichsFlux<equations::InviscidBurgers1D<T>> {
     std::array<T, NVARS> flux_R = eq.flux(uR, 0);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] =
-          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
     }
     return flux;
   }
@@ -105,8 +105,8 @@ struct LaxFriedrichsFlux<equations::CompressibleEuler1D<T>> {
     std::array<T, NVARS> flux_R = eq.flux(uR, 0);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] =
-          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
     }
 
     return flux;
@@ -130,8 +130,8 @@ struct LaxFriedrichsFlux<equations::CompressibleEuler2D<T>> {
     std::array<T, NVARS> flux_R = eq.flux(uR, dim);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] =
-          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
     }
     return flux;
   }
@@ -146,8 +146,8 @@ struct LaxFriedrichsFlux<equations::CompressibleEuler2D<T>> {
     std::array<T, NVARS> flux_R = eq.flux(uR, normal);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] =
-          0.5 * (flux_L[i] + flux_R[i]) - 0.5 * max_speed * (uR[i] - uL[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
     }
     return flux;
   }
@@ -168,7 +168,7 @@ struct CentralFlux {
     auto flux_R = eq.flux(uR, dim);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] = 0.5 * (flux_L[i] + flux_R[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]);
     }
     return flux;
   }
@@ -183,7 +183,7 @@ struct CentralFlux {
     auto flux_R = eq.flux(uR, normal);
     std::array<value_type, NVARS> flux{};
     for (std::size_t i = 0; i < NVARS; ++i) {
-      flux[i] = 0.5 * (flux_L[i] + flux_R[i]);
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]);
     }
     return flux;
   }
@@ -239,8 +239,10 @@ struct HLLCFlux<equations::CompressibleEuler1D<T>> {
 
     T gamma = eq.get_gamma();
 
-    T p_ll = (gamma - 1.0) * (rhoE_ll - 0.5 * rho_ll * v1_ll * v1_ll);
-    T p_rr = (gamma - 1.0) * (rhoE_rr - 0.5 * rho_rr * v1_rr * v1_rr);
+    T p_ll = (gamma - static_cast<T>(1.0)) *
+             (rhoE_ll - static_cast<T>(0.5) * rho_ll * v1_ll * v1_ll);
+    T p_rr = (gamma - static_cast<T>(1.0)) *
+             (rhoE_rr - static_cast<T>(0.5) * rho_rr * v1_rr * v1_rr);
 
     T c_ll = std::sqrt(gamma * p_ll / rho_ll);
     T c_rr = std::sqrt(gamma * p_rr / rho_rr);
@@ -255,11 +257,11 @@ struct HLLCFlux<equations::CompressibleEuler1D<T>> {
     T vel_R = v1_rr;
 
     T vel_roe = (sqrt_rho_ll * vel_L + sqrt_rho_rr * vel_R) / sum_sqrt_rho;
-    T ekin_roe = 0.5 * vel_roe * vel_roe;
+    T ekin_roe = static_cast<T>(0.5) * vel_roe * vel_roe;
     T H_ll = (rhoE_ll + p_ll) / rho_ll;
     T H_rr = (rhoE_rr + p_rr) / rho_rr;
     T H_roe = (sqrt_rho_ll * H_ll + sqrt_rho_rr * H_rr) / sum_sqrt_rho;
-    T c_roe = std::sqrt((gamma - 1.0) * (H_roe - ekin_roe));
+    T c_roe = std::sqrt((gamma - static_cast<T>(1.0)) * (H_roe - ekin_roe));
 
     T Ssl = std::min(vel_L - c_ll, vel_roe - c_roe);
     T Ssr = std::max(vel_R + c_rr, vel_roe + c_roe);
@@ -334,25 +336,30 @@ struct ChandrashekarFlux<equations::CompressibleEuler1D<T>> {
 
     T gamma = eq.get_gamma();
 
-    T p_ll = (gamma - 1.0) * (rhoE_ll - 0.5 * rho_ll * v1_ll * v1_ll);
-    T p_rr = (gamma - 1.0) * (rhoE_rr - 0.5 * rho_rr * v1_rr * v1_rr);
+    T p_ll = (gamma - static_cast<T>(1.0)) *
+             (rhoE_ll - static_cast<T>(0.5) * rho_ll * v1_ll * v1_ll);
+    T p_rr = (gamma - static_cast<T>(1.0)) *
+             (rhoE_rr - static_cast<T>(0.5) * rho_rr * v1_rr * v1_rr);
 
-    T beta_ll = 0.5 * rho_ll / p_ll;
-    T beta_rr = 0.5 * rho_rr / p_rr;
-    T specific_kin_ll = 0.5 * v1_ll * v1_ll;
-    T specific_kin_rr = 0.5 * v1_rr * v1_rr;
+    T beta_ll = static_cast<T>(0.5) * rho_ll / p_ll;
+    T beta_rr = static_cast<T>(0.5) * rho_rr / p_rr;
+    T specific_kin_ll = static_cast<T>(0.5) * v1_ll * v1_ll;
+    T specific_kin_rr = static_cast<T>(0.5) * v1_rr * v1_rr;
 
-    T rho_avg = 0.5 * (rho_ll + rho_rr);
+    T rho_avg = static_cast<T>(0.5) * (rho_ll + rho_rr);
     T rho_mean = ln_mean(rho_ll, rho_rr);
     T beta_mean = ln_mean(beta_ll, beta_rr);
-    T beta_avg = 0.5 * (beta_ll + beta_rr);
-    T v1_avg = 0.5 * (v1_ll + v1_rr);
-    T p_mean = 0.5 * rho_avg / beta_avg;
+    T beta_avg = static_cast<T>(0.5) * (beta_ll + beta_rr);
+    T v1_avg = static_cast<T>(0.5) * (v1_ll + v1_rr);
+    T p_mean = static_cast<T>(0.5) * rho_avg / beta_avg;
     T velocity_square_avg = specific_kin_ll + specific_kin_rr;
 
     T f1 = rho_mean * v1_avg;
     T f2 = f1 * v1_avg + p_mean;
-    T f3 = f1 * 0.5 * (1.0 / (gamma - 1.0) / beta_mean - velocity_square_avg) +
+    T f3 = f1 * static_cast<T>(0.5) *
+                   (static_cast<T>(1.0) / (gamma - static_cast<T>(1.0)) /
+                        beta_mean -
+                    velocity_square_avg) +
            f2 * v1_avg;
     return {f1, f2, f3};
   }
@@ -387,31 +394,37 @@ struct ChandrashekarFlux<equations::CompressibleEuler2D<T>> {
     const T v_dot_n_ll = v1_ll * normal[0] + v2_ll * normal[1];
     const T v_dot_n_rr = v1_rr * normal[0] + v2_rr * normal[1];
 
-    const T specific_kin_ll = 0.5 * (v1_ll * v1_ll + v2_ll * v2_ll);
-    const T specific_kin_rr = 0.5 * (v1_rr * v1_rr + v2_rr * v2_rr);
+    const T specific_kin_ll =
+        static_cast<T>(0.5) * (v1_ll * v1_ll + v2_ll * v2_ll);
+    const T specific_kin_rr =
+        static_cast<T>(0.5) * (v1_rr * v1_rr + v2_rr * v2_rr);
 
     const T gamma = eq.get_gamma();
-    const T p_ll = (gamma - 1.0) *
-                   (rhoE_ll - 0.5 * rho_ll * (v1_ll * v1_ll + v2_ll * v2_ll));
-    const T p_rr = (gamma - 1.0) *
-                   (rhoE_rr - 0.5 * rho_rr * (v1_rr * v1_rr + v2_rr * v2_rr));
+    const T p_ll = (gamma - static_cast<T>(1.0)) *
+                   (rhoE_ll - static_cast<T>(0.5) *
+                                  rho_ll * (v1_ll * v1_ll + v2_ll * v2_ll));
+    const T p_rr = (gamma - static_cast<T>(1.0)) *
+                   (rhoE_rr - static_cast<T>(0.5) *
+                                  rho_rr * (v1_rr * v1_rr + v2_rr * v2_rr));
 
-    const T beta_ll = 0.5 * rho_ll / p_ll;
-    const T beta_rr = 0.5 * rho_rr / p_rr;
-    const T rho_avg = 0.5 * (rho_ll + rho_rr);
+    const T beta_ll = static_cast<T>(0.5) * rho_ll / p_ll;
+    const T beta_rr = static_cast<T>(0.5) * rho_rr / p_rr;
+    const T rho_avg = static_cast<T>(0.5) * (rho_ll + rho_rr);
     const T rho_mean = ln_mean(rho_ll, rho_rr);
     const T beta_mean = ln_mean(beta_ll, beta_rr);
-    const T beta_avg = 0.5 * (beta_ll + beta_rr);
-    const T v1_avg = 0.5 * (v1_ll + v1_rr);
-    const T v2_avg = 0.5 * (v2_ll + v2_rr);
-    const T p_mean = 0.5 * rho_avg / beta_avg;
+    const T beta_avg = static_cast<T>(0.5) * (beta_ll + beta_rr);
+    const T v1_avg = static_cast<T>(0.5) * (v1_ll + v1_rr);
+    const T v2_avg = static_cast<T>(0.5) * (v2_ll + v2_rr);
+    const T p_mean = static_cast<T>(0.5) * rho_avg / beta_avg;
     const T velocity_square_avg = specific_kin_ll + specific_kin_rr;
 
-    const T f1 = rho_mean * 0.5 * (v_dot_n_ll + v_dot_n_rr);
+    const T f1 = rho_mean * static_cast<T>(0.5) * (v_dot_n_ll + v_dot_n_rr);
     const T f2 = f1 * v1_avg + p_mean * normal[0];
     const T f3 = f1 * v2_avg + p_mean * normal[1];
     const T f4 =
-        f1 * 0.5 * (1.0 / (gamma - 1.0) / beta_mean - velocity_square_avg) +
+        f1 * static_cast<T>(0.5) *
+            (static_cast<T>(1.0) / (gamma - static_cast<T>(1.0)) / beta_mean -
+             velocity_square_avg) +
         f2 * v1_avg + f3 * v2_avg;
 
     return {f1, f2, f3, f4};
@@ -445,39 +458,50 @@ struct ChandrashekarESFlux<equations::CompressibleEuler1D<T>> {
 
     T gamma = eq.get_gamma();
 
-    T p_ll = (gamma - 1.0) * (rhoE_ll - 0.5 * rho_ll * v1_ll * v1_ll);
-    T p_rr = (gamma - 1.0) * (rhoE_rr - 0.5 * rho_rr * v1_rr * v1_rr);
+    T p_ll = (gamma - static_cast<T>(1.0)) *
+             (rhoE_ll - static_cast<T>(0.5) * rho_ll * v1_ll * v1_ll);
+    T p_rr = (gamma - static_cast<T>(1.0)) *
+             (rhoE_rr - static_cast<T>(0.5) * rho_rr * v1_rr * v1_rr);
 
-    T beta_ll = 0.5 * rho_ll / p_ll;
-    T beta_rr = 0.5 * rho_rr / p_rr;
-    T specific_kin_ll = 0.5 * v1_ll * v1_ll;
-    T specific_kin_rr = 0.5 * v1_rr * v1_rr;
+    T beta_ll = static_cast<T>(0.5) * rho_ll / p_ll;
+    T beta_rr = static_cast<T>(0.5) * rho_rr / p_rr;
+    T specific_kin_ll = static_cast<T>(0.5) * v1_ll * v1_ll;
+    T specific_kin_rr = static_cast<T>(0.5) * v1_rr * v1_rr;
 
-    T rho_avg = 0.5 * (rho_ll + rho_rr);
+    T rho_avg = static_cast<T>(0.5) * (rho_ll + rho_rr);
     T rho_mean = ln_mean(rho_ll, rho_rr);
     T beta_mean = ln_mean(beta_ll, beta_rr);
-    T beta_avg = 0.5 * (beta_ll + beta_rr);
-    T v1_avg = 0.5 * (v1_ll + v1_rr);
-    T p_mean = 0.5 * rho_avg / beta_avg;
+    T beta_avg = static_cast<T>(0.5) * (beta_ll + beta_rr);
+    T v1_avg = static_cast<T>(0.5) * (v1_ll + v1_rr);
+    T p_mean = static_cast<T>(0.5) * rho_avg / beta_avg;
     T velocity_square_avg = specific_kin_ll + specific_kin_rr;
 
     T f1 = rho_mean * v1_avg;
     T f2 = f1 * v1_avg + p_mean;
-    T f3 = f1 * 0.5 * (1.0 / (gamma - 1.0) / beta_mean - velocity_square_avg) +
+    T f3 = f1 * static_cast<T>(0.5) *
+                   (static_cast<T>(1.0) / (gamma - static_cast<T>(1.0)) /
+                        beta_mean -
+                    velocity_square_avg) +
            f2 * v1_avg;
 
     auto max_speed = eq.get_wave_speed(u_ll, u_rr);
     // T max_speed = std::abs(v1_avg) + std::sqrt(gamma / (2.0 * beta_mean));
 
-    f1 = f1 - 0.5 * max_speed * (rho_rr - rho_ll);
-    f2 = f2 - 0.5 * max_speed * (mom_rr - mom_ll);
+    f1 = f1 - static_cast<T>(0.5) * max_speed * (rho_rr - rho_ll);
+    f2 = f2 - static_cast<T>(0.5) * max_speed * (mom_rr - mom_ll);
     f3 =
         f3 -
-        0.5 * max_speed *
-            ((0.5 * (1.0 / (gamma - 1.0) / beta_mean) + 0.5 * v1_ll * v1_rr) *
+        static_cast<T>(0.5) * max_speed *
+            ((static_cast<T>(0.5) *
+                  (static_cast<T>(1.0) /
+                   (gamma - static_cast<T>(1.0)) / beta_mean) +
+              static_cast<T>(0.5) * v1_ll * v1_rr) *
                  (rho_rr - rho_ll) +
              rho_avg * v1_avg * (v1_rr - v1_ll) +
-             rho_avg / (2.0 * (gamma - 1.0)) * (1.0 / beta_rr - 1.0 / beta_ll));
+             rho_avg / (static_cast<T>(2.0) *
+                        (gamma - static_cast<T>(1.0))) *
+                 (static_cast<T>(1.0) / beta_rr -
+                  static_cast<T>(1.0) / beta_ll));
 
     return {f1, f2, f3};
   }

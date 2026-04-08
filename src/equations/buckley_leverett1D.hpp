@@ -17,18 +17,22 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   T flux(const T& u, std::size_t dim) const {
-    return 4.0 * u * u / (4.0 * u * u + (1.0 - u) * (1.0 - u));
+    return static_cast<T>(4.0) * u * u /
+           (static_cast<T>(4.0) * u * u +
+            (static_cast<T>(1.0) - u) * (static_cast<T>(1.0) - u));
   }
 
   KOKKOS_INLINE_FUNCTION
   std::array<value_type, NVARS> flux(const std::array<value_type, NVARS>& u,
                                      std::size_t idim) const {
-    return {4.0 * u[0] * u[0] /
-            (4.0 * u[0] * u[0] + (1.0 - u[0]) * (1.0 - u[0]))};
+    return {static_cast<value_type>(4.0) * u[0] * u[0] /
+            (static_cast<value_type>(4.0) * u[0] * u[0] +
+             (static_cast<value_type>(1.0) - u[0]) *
+                 (static_cast<value_type>(1.0) - u[0]))};
   }
 
   KOKKOS_INLINE_FUNCTION
-  T get_wave_speed() const { return 2.35; }
+  T get_wave_speed() const { return static_cast<T>(2.35); }
 };
 } // namespace equations
 } // namespace DGSEM

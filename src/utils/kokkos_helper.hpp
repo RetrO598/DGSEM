@@ -18,6 +18,6 @@ void clone_view_shape(ViewType& dst, const ViewType& src) {
     static_assert(ViewType::rank <= 4, "Unsupported rank");
   }
 
-  Kokkos::deep_copy(dst, 0.0);
+  Kokkos::deep_copy(dst, typename ViewType::value_type{0.0});
 }
 } // namespace DGSEM

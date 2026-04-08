@@ -547,7 +547,7 @@ struct VolumeIntegralShockCapturingHG
   KOKKOS_INLINE_FUNCTION void operator()(std::size_t ielem, const Equations& eq,
                                          const ArrayU& u, ArrayDu& du) const {
     value_type alpha_ielem = alpha_view(ielem);
-    bool dg_only = std::abs(alpha_ielem - 0.0) <= atol;
+    bool dg_only = std::abs(alpha_ielem - value_type{0.0}) <= atol;
 
     if (dg_only) {
       detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
@@ -558,7 +558,8 @@ struct VolumeIntegralShockCapturingHG
       detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
                                   NDIMS>::template split_form_kernel<BasisData,
                                                                      Equations>(
-          ielem, basis_data, eq, u, du, (1.0 - alpha_ielem));
+          ielem, basis_data, eq, u, du,
+          (static_cast<value_type>(1.0) - alpha_ielem));
 
       detail::FinitVolumeIntegral<value_type, NVARS, FvFlux<Equations>, NDIMS>::
           template fv_kernel<BasisData, Equations>(ielem, basis_data, eq, u, du,
@@ -573,7 +574,7 @@ struct VolumeIntegralShockCapturingHG
     requires(NDIMS == 2)
   {
     const value_type alpha_ielem = alpha_view(ielem, jelem);
-    const bool dg_only = std::abs(alpha_ielem - 0.0) <= atol;
+    const bool dg_only = std::abs(alpha_ielem - value_type{0.0}) <= atol;
 
     if (dg_only) {
       detail::VolumeIntegralSplit<value_type, NVARS, NumericFlux<Equations>,
@@ -585,7 +586,7 @@ struct VolumeIntegralShockCapturingHG
                                   NDIMS>::template split_form_kernel<BasisData,
                                                                      Equations>(
           ielem, jelem, basis_data, contravariant_vectors, eq, u, du,
-          (1.0 - alpha_ielem));
+          (static_cast<value_type>(1.0) - alpha_ielem));
 
       detail::FinitVolumeIntegral<value_type, NVARS, FvFlux<Equations>,
                                   NDIMS>::template fv_kernel<BasisData,

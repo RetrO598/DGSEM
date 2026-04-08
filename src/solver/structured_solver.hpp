@@ -74,8 +74,8 @@ private:
   std::array<std::size_t, NDIMS> n_cells;
 
   // for shock-capturing indicators
-  value_type alpha_max = 0.5;
-  value_type alpha_min = 0.001;
+  value_type alpha_max = static_cast<value_type>(0.5);
+  value_type alpha_min = static_cast<value_type>(0.001);
   bool alpha_smooth = false;
 };
 
@@ -184,7 +184,7 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_rhs(solution& sol) {
-  Kokkos::deep_copy(sol.du_device, 0.0);
+  Kokkos::deep_copy(sol.du_device, value_type{0.0});
 
   calc_volume_integral(sol);
 

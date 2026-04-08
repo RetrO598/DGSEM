@@ -153,20 +153,24 @@ public:
     solver.calc_rhs(sol);
 
     parallel_ma2<Equations>::apply(tmp1.u_device, sol.u_device, sol.du_device,
-                                   1.0, dt, solver.get_ndofs(),
+                                   static_cast<T>(1.0), dt, solver.get_ndofs(),
                                    mesh.get_num_cells());
 
     solver.calc_rhs(tmp1);
 
-    parallel_ma3<Equations>::apply(
-        tmp2.u_device, sol.u_device, tmp1.u_device, tmp1.du_device, 3.0 / 4.0,
-        1.0 / 4.0, 1.0 / 4.0 * dt, solver.get_ndofs(), mesh.get_num_cells());
+    parallel_ma3<Equations>::apply(tmp2.u_device, sol.u_device, tmp1.u_device,
+                                   tmp1.du_device, static_cast<T>(3.0 / 4.0),
+                                   static_cast<T>(1.0 / 4.0),
+                                   static_cast<T>(1.0 / 4.0) * dt,
+                                   solver.get_ndofs(), mesh.get_num_cells());
 
     solver.calc_rhs(tmp2);
 
-    parallel_ma3<Equations>::apply(
-        sol.u_device, sol.u_device, tmp2.u_device, tmp2.du_device, 1.0 / 3.0,
-        2.0 / 3.0, 2.0 / 3.0 * dt, solver.get_ndofs(), mesh.get_num_cells());
+    parallel_ma3<Equations>::apply(sol.u_device, sol.u_device, tmp2.u_device,
+                                   tmp2.du_device, static_cast<T>(1.0 / 3.0),
+                                   static_cast<T>(2.0 / 3.0),
+                                   static_cast<T>(2.0 / 3.0) * dt,
+                                   solver.get_ndofs(), mesh.get_num_cells());
   }
 
 private:

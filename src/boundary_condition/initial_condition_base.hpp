@@ -70,7 +70,8 @@ public:
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
-    T value = 1.0 + 0.5 * std::sin(std::numbers::pi * x);
+    T value = static_cast<T>(1.0) +
+              static_cast<T>(0.5) * std::sin(std::numbers::pi_v<T> * x);
     return {value};
   }
 };
@@ -92,7 +93,7 @@ public:
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
-    T value = std::sin(2.0 * std::numbers::pi * x);
+    T value = std::sin(static_cast<T>(2.0) * std::numbers::pi_v<T> * x);
     return {value};
   }
 };
@@ -114,7 +115,7 @@ public:
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
-    T value = std::exp(-50.0 * x * x);
+    T value = std::exp(static_cast<T>(-50.0) * x * x);
     return {value};
   }
 };
@@ -135,21 +136,24 @@ public:
 
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
-    T xmin = -1.0;
-    T xmax = 1.0;
     T x = coordinate[0];
 
-    T value = 0.0;
-    if (x > -0.8 && x < -0.6) {
-      value = std::exp(-std::log(2.0) * (x + 0.7) * (x + 0.7) / 0.0009);
-    } else if (x > -0.4 && x < -0.2) {
-      value = 1.0;
-    } else if (x > 0.0 && x < 0.2) {
-      value = 1.0 - std::abs(10.0 * (x - 0.1));
-    } else if (x > 0.4 && x < 0.6) {
-      value = std::sqrt(1.0 - 100.0 * (x - 0.5) * (x - 0.5));
+    T value = T{0.0};
+    if (x > static_cast<T>(-0.8) && x < static_cast<T>(-0.6)) {
+      value =
+          std::exp(-std::log(static_cast<T>(2.0)) * (x + static_cast<T>(0.7)) *
+                   (x + static_cast<T>(0.7)) / static_cast<T>(0.0009));
+    } else if (x > static_cast<T>(-0.4) && x < static_cast<T>(-0.2)) {
+      value = static_cast<T>(1.0);
+    } else if (x > static_cast<T>(0.0) && x < static_cast<T>(0.2)) {
+      value = static_cast<T>(1.0) -
+              std::abs(static_cast<T>(10.0) * (x - static_cast<T>(0.1)));
+    } else if (x > static_cast<T>(0.4) && x < static_cast<T>(0.6)) {
+      value = std::sqrt(static_cast<T>(1.0) - static_cast<T>(100.0) *
+                                                  (x - static_cast<T>(0.5)) *
+                                                  (x - static_cast<T>(0.5)));
     } else {
-      value = 0.0;
+      value = T{0.0};
     }
     return {value};
   }
@@ -172,11 +176,11 @@ public:
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
-    T value = 0.0;
-    if (x > -0.5 && x < 0.0) {
-      value = 1.0;
+    T value = T{0.0};
+    if (x > static_cast<T>(-0.5) && x < static_cast<T>(0.0)) {
+      value = static_cast<T>(1.0);
     } else {
-      value = 0.0;
+      value = T{0.0};
     }
     return {value};
   }
@@ -199,19 +203,22 @@ public:
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
-    T rho = 0.0;
-    T v = 0.0;
-    T p = 0.0;
-    if (x < -4.0) {
-      rho = 3.857;
-      v = 2.629;
-      p = 10.333;
-    } else if (x >= -4.0) {
-      rho = 1.0 + 0.2 * std::sin(5.0 * x);
-      v = 0.0;
-      p = 1.0;
+    T rho = T{0.0};
+    T v = T{0.0};
+    T p = T{0.0};
+    if (x < static_cast<T>(-4.0)) {
+      rho = static_cast<T>(3.857);
+      v = static_cast<T>(2.629);
+      p = static_cast<T>(10.333);
+    } else if (x >= static_cast<T>(-4.0)) {
+      rho = static_cast<T>(1.0) +
+            static_cast<T>(0.2) * std::sin(static_cast<T>(5.0) * x);
+      v = T{0.0};
+      p = static_cast<T>(1.0);
     }
-    return {rho, rho * v, rho * 0.5 * v * v + p / (1.4 - 1.0)};
+    return {rho, rho * v,
+            rho * static_cast<T>(0.5) * v * v +
+                p / (static_cast<T>(1.4) - static_cast<T>(1.0))};
   }
 };
 // Sod Shock Tube Initial Condition for 1D Euler
@@ -233,18 +240,19 @@ public:
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
     T x = coordinate[0];
     T rho, u, p;
-    if (x < 0.5) {
-      rho = 1.0;
-      u = 0.0;
-      p = 1.0;
+    if (x < static_cast<T>(0.5)) {
+      rho = static_cast<T>(1.0);
+      u = T{0.0};
+      p = static_cast<T>(1.0);
     } else {
-      rho = 0.125;
-      u = 0.0;
-      p = 0.1;
+      rho = static_cast<T>(0.125);
+      u = T{0.0};
+      p = static_cast<T>(0.1);
     }
     T mom = rho * u;
-    T gamma = 1.4;
-    T rhoE = p / (gamma - 1.0) + 0.5 * rho * u * u;
+    T gamma = static_cast<T>(1.4);
+    T rhoE =
+        p / (gamma - static_cast<T>(1.0)) + static_cast<T>(0.5) * rho * u * u;
     return {rho, mom, rhoE};
   }
 };

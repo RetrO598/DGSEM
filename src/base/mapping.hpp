@@ -11,8 +11,9 @@ linear_interpolate(const std::array<T, NDIM>& coord,
                    const std::array<T, NDIM>& right_value) {
   std::array<T, NDIM> result{};
   for (std::size_t i = 0; i < NDIM; ++i) {
-    result[i] = 0.5 * ((1.0 - coord[i]) * left_value[i] +
-                       (1.0 + coord[i]) * right_value[i]);
+    result[i] = static_cast<T>(0.5) *
+                ((static_cast<T>(1.0) - coord[i]) * left_value[i] +
+                 (static_cast<T>(1.0) + coord[i]) * right_value[i]);
   }
 
   return result;
@@ -21,7 +22,9 @@ linear_interpolate(const std::array<T, NDIM>& coord,
 template <class T>
 constexpr T linear_interpolate(const T& coord, const T& left_value,
                                const T& right_value) {
-  return 0.5 * ((1.0 - coord) * left_value + (1.0 + coord) * right_value);
+  return static_cast<T>(0.5) *
+         ((static_cast<T>(1.0) - coord) * left_value +
+          (static_cast<T>(1.0) + coord) * right_value);
 }
 
 template <class T>

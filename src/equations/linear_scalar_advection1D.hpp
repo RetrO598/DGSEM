@@ -28,7 +28,7 @@ public:
   T get_wave_speed() const { return speed; }
 
 private:
-  T speed{1.0};
+  T speed{static_cast<T>(1.0)};
 };
 
 } // namespace equations

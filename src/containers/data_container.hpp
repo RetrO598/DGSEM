@@ -80,14 +80,16 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
   inline constexpr static void
   calc_node_coordinates(const std::array<std::size_t, 1>& n_cells,
                         CoordArrayHost& coordinates, const Mapping& mapping) {
-    T dx = 2.0 / n_cells[0];
+    const T dx = static_cast<T>(2.0) / static_cast<T>(n_cells[0]);
 
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
-      T cell_x_offset = -1.0 + ielem * dx + 0.5 * dx;
+      const T cell_x_offset = static_cast<T>(-1.0) +
+                              static_cast<T>(ielem) * dx +
+                              static_cast<T>(0.5) * dx;
 
       for (std::size_t i = 0; i < Basis::NNodes; ++i) {
-        coordinates(ielem, i, 0) =
-            mapping.eval(cell_x_offset + 0.5 * dx * Basis::nodes_host[i]);
+        coordinates(ielem, i, 0) = mapping.eval(
+            cell_x_offset + static_cast<T>(0.5) * dx * Basis::nodes_host[i]);
       }
     }
   }
@@ -98,7 +100,7 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
                        const CoordArrayHost& coordinates) {
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
       for (std::size_t i = 0; i < Basis::NNodes; ++i) {
-        T tmp = 0.0;
+        T tmp = T{0.0};
         for (std::size_t j = 0; j < Basis::NNodes; ++j) {
           tmp += Basis::derivative_host(i, j) * coordinates(ielem, j, 0);
         }
@@ -118,7 +120,8 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
                         const MatrixHost& jacobian) {
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
       for (std::size_t i = 0; i < Basis::NNodes; ++i) {
-        inverse_jacobian(ielem, i) = 1.0 / jacobian(ielem, i, 0, 0);
+        inverse_jacobian(ielem, i) =
+            static_cast<T>(1.0) / jacobian(ielem, i, 0, 0);
       }
     }
   }
@@ -185,19 +188,25 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
   inline constexpr static void
   calc_node_coordinates(const std::array<std::size_t, 2>& n_cells,
                         CoordArrayHost& coordinates, const Mapping& mapping) {
-    const T dx = 2.0 / n_cells[0];
-    const T dy = 2.0 / n_cells[1];
+    const T dx = static_cast<T>(2.0) / static_cast<T>(n_cells[0]);
+    const T dy = static_cast<T>(2.0) / static_cast<T>(n_cells[1]);
 
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
-      const T cell_x_offset = -1.0 + ielem * dx + 0.5 * dx;
+      const T cell_x_offset = static_cast<T>(-1.0) +
+                              static_cast<T>(ielem) * dx +
+                              static_cast<T>(0.5) * dx;
       for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
-        const T cell_y_offset = -1.0 + jelem * dy + 0.5 * dy;
+        const T cell_y_offset = static_cast<T>(-1.0) +
+                                static_cast<T>(jelem) * dy +
+                                static_cast<T>(0.5) * dy;
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
           for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
             const std::size_t dof = local_dof(inode, jnode);
             const std::array<T, 2> ref_coord{
-                cell_x_offset + 0.5 * dx * Basis::nodes_host[inode],
-                cell_y_offset + 0.5 * dy * Basis::nodes_host[jnode]};
+                cell_x_offset +
+                    static_cast<T>(0.5) * dx * Basis::nodes_host[inode],
+                cell_y_offset +
+                    static_cast<T>(0.5) * dy * Basis::nodes_host[jnode]};
             const auto phys_coord = mapping.eval(ref_coord);
             coordinates(ielem, jelem, dof, 0) = phys_coord[0];
             coordinates(ielem, jelem, dof, 1) = phys_coord[1];
@@ -216,10 +225,10 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
           for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
             const std::size_t dof = local_dof(inode, jnode);
-            T dx_dxi = 0.0;
-            T dy_dxi = 0.0;
-            T dx_deta = 0.0;
-            T dy_deta = 0.0;
+            T dx_dxi = T{};
+            T dy_dxi = T{};
+            T dx_deta = T{};
+            T dy_deta = T{};
 
             for (std::size_t k = 0; k < Basis::NNodes; ++k) {
               const std::size_t dof_x = local_dof(k, jnode);
