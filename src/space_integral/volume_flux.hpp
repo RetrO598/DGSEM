@@ -104,37 +104,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 1> {
   template <class BasisData, class Equations, class ArrayU, class ArrayDu>
   KOKKOS_INLINE_FUNCTION static void
   split_form_kernel(std::size_t ielem, const BasisData& basis,
-                    const Equations& eq, const ArrayU& u, ArrayDu& du) {
-    for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
-      std::array<T, NVARS> u_node;
-      for (std::size_t var = 0; var < NVARS; ++var) {
-        u_node[var] = u(ielem, inode, var);
-      }
-
-      for (std::size_t jnode = inode + 1; jnode < BasisData::NNodes; ++jnode) {
-        std::array<T, NVARS> u_node_j;
-        for (std::size_t var = 0; var < NVARS; ++var) {
-          u_node_j[var] = u(ielem, jnode, var);
-        }
-
-        auto flux_ij = NumericFlux::numerical_flux(eq, u_node, u_node_j);
-        for (std::size_t var = 0; var < NVARS; ++var) {
-          du(ielem, inode, var) =
-              du(ielem, inode, var) +
-              basis.derivative_split(inode, jnode) * flux_ij[var];
-          du(ielem, jnode, var) =
-              du(ielem, jnode, var) +
-              basis.derivative_split(jnode, inode) * flux_ij[var];
-        }
-      }
-    }
-  }
-
-  template <class BasisData, class Equations, class ArrayU, class ArrayDu>
-  KOKKOS_INLINE_FUNCTION static void
-  split_form_kernel(std::size_t ielem, const BasisData& basis,
                     const Equations& eq, const ArrayU& u, ArrayDu& du,
-                    T alpha) {
+                    T alpha = static_cast<T>(1.0)) {
     for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
       std::array<T, NVARS> u_node;
       for (std::size_t var = 0; var < NVARS; ++var) {
@@ -169,80 +140,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
   split_form_kernel(std::size_t ielem, std::size_t jelem,
                     const BasisData& basis,
                     const MetricArray& contravariant_vectors,
-                    const Equations& eq, const ArrayU& u, ArrayDu& du) {
-    for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
-      for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
-        const std::size_t dof_i =
-            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
-        std::array<T, NVARS> u_node{};
-        for (std::size_t var = 0; var < NVARS; ++var) {
-          u_node[var] = u(ielem, jelem, dof_i, var);
-        }
-
-        for (std::size_t knode = inode + 1; knode < BasisData::NNodes;
-             ++knode) {
-          const std::size_t dof_k =
-              DGSEM::utils::local_dof<BasisData::NNodes>(knode, jnode);
-          std::array<T, NVARS> u_node_k{};
-          for (std::size_t var = 0; var < NVARS; ++var) {
-            u_node_k[var] = u(ielem, jelem, dof_k, var);
-          }
-
-          const std::array<T, 2> normal = {
-              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_i, 0, 0) +
-                        contravariant_vectors(ielem, jelem, dof_k, 0, 0)),
-              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_i, 0, 1) +
-                        contravariant_vectors(ielem, jelem, dof_k, 0, 1))};
-          const auto flux_ik =
-              NumericFlux::numerical_flux(eq, u_node, u_node_k, normal);
-          for (std::size_t var = 0; var < NVARS; ++var) {
-            du(ielem, jelem, dof_i, var) +=
-                basis.derivative_split(inode, knode) * flux_ik[var];
-            du(ielem, jelem, dof_k, var) +=
-                basis.derivative_split(knode, inode) * flux_ik[var];
-          }
-        }
-
-        const std::size_t dof_j =
-            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
-        // std::array<T, NVARS> u_node{};
-        for (std::size_t var = 0; var < NVARS; ++var) {
-          u_node[var] = u(ielem, jelem, dof_j, var);
-        }
-
-        for (std::size_t lnode = jnode + 1; lnode < BasisData::NNodes;
-             ++lnode) {
-          const std::size_t dof_l =
-              DGSEM::utils::local_dof<BasisData::NNodes>(inode, lnode);
-          std::array<T, NVARS> u_node_l{};
-          for (std::size_t var = 0; var < NVARS; ++var) {
-            u_node_l[var] = u(ielem, jelem, dof_l, var);
-          }
-
-          const std::array<T, 2> normal = {
-              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 0) +
-                        contravariant_vectors(ielem, jelem, dof_l, 1, 0)),
-              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 1) +
-                        contravariant_vectors(ielem, jelem, dof_l, 1, 1))};
-          const auto flux_jl =
-              NumericFlux::numerical_flux(eq, u_node, u_node_l, normal);
-          for (std::size_t var = 0; var < NVARS; ++var) {
-            du(ielem, jelem, dof_j, var) +=
-                basis.derivative_split(jnode, lnode) * flux_jl[var];
-            du(ielem, jelem, dof_l, var) +=
-                basis.derivative_split(lnode, jnode) * flux_jl[var];
-          }
-        }
-      }
-    }
-  }
-
-  template <class BasisData, class Equations, class ArrayU, class ArrayDu,
-            class MetricArray>
-  KOKKOS_INLINE_FUNCTION static void split_form_kernel(
-      std::size_t ielem, std::size_t jelem, const BasisData& basis,
-      const MetricArray& contravariant_vectors, const Equations& eq,
-      const ArrayU& u, ArrayDu& du, T alpha) {
+                    const Equations& eq, const ArrayU& u, ArrayDu& du,
+                    T alpha = static_cast<T>(1.0)) {
     for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
       for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
         const std::size_t dof_i =
