@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <equations/equations.hpp>
 #include <type_traits>
+#include <utils/local_dof.hpp>
 
 namespace DGSEM {
 
@@ -251,13 +252,10 @@ struct HGIndicator<Basis, Equations, 2> {
           std::array<std::array<value_type, Basis::NNodes>, Basis::NNodes>
               modal{};
 
-          auto local_dof = [](std::size_t inode, std::size_t jnode) {
-            return jnode * Basis::NNodes + inode;
-          };
-
           for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
             for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-              const std::size_t dof = local_dof(inode, jnode);
+              const std::size_t dof =
+                  DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode);
               indicator[jnode][inode] =
                   IndicatorValueAccessor<Equations>::get_indicator_value(
                       u, ielem, jelem, dof);

@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <equations/equations.hpp>
 #include <limits>
+#include <utils/local_dof.hpp>
 
 namespace DGSEM {
 
@@ -47,13 +48,10 @@ struct VolumeIntegralWeak<T, NVARS, 2> {
   weak_form_kernel(std::size_t ielem, std::size_t jelem, const BasisData& basis,
                    const MetricArray& contravariant_vectors,
                    const Equations& eq, const ArrayU& u, ArrayDu& du) {
-    auto local_dof = [](std::size_t inode, std::size_t jnode) {
-      return jnode * BasisData::NNodes + inode;
-    };
-
     for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
       for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
-        const std::size_t dof = local_dof(inode, jnode);
+        const std::size_t dof =
+            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
         std::array<T, NVARS> u_node{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_node[var] = u(ielem, jelem, dof, var);
@@ -75,7 +73,8 @@ struct VolumeIntegralWeak<T, NVARS, 2> {
         }
 
         for (std::size_t iinode = 0; iinode < BasisData::NNodes; ++iinode) {
-          const std::size_t out_dof = local_dof(iinode, jnode);
+          const std::size_t out_dof =
+              DGSEM::utils::local_dof<BasisData::NNodes>(iinode, jnode);
           for (std::size_t var = 0; var < NVARS; ++var) {
             du(ielem, jelem, out_dof, var) +=
                 basis.derivative_dhat(iinode, inode) *
@@ -84,7 +83,8 @@ struct VolumeIntegralWeak<T, NVARS, 2> {
         }
 
         for (std::size_t jjnode = 0; jjnode < BasisData::NNodes; ++jjnode) {
-          const std::size_t out_dof = local_dof(inode, jjnode);
+          const std::size_t out_dof =
+              DGSEM::utils::local_dof<BasisData::NNodes>(inode, jjnode);
           for (std::size_t var = 0; var < NVARS; ++var) {
             du(ielem, jelem, out_dof, var) +=
                 basis.derivative_dhat(jjnode, jnode) *
@@ -170,13 +170,10 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
                     const BasisData& basis,
                     const MetricArray& contravariant_vectors,
                     const Equations& eq, const ArrayU& u, ArrayDu& du) {
-    auto local_dof = [](std::size_t inode, std::size_t jnode) {
-      return jnode * BasisData::NNodes + inode;
-    };
-
     for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
       for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
-        const std::size_t dof_i = local_dof(inode, jnode);
+        const std::size_t dof_i =
+            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
         std::array<T, NVARS> u_node{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_node[var] = u(ielem, jelem, dof_i, var);
@@ -184,7 +181,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
 
         for (std::size_t knode = inode + 1; knode < BasisData::NNodes;
              ++knode) {
-          const std::size_t dof_k = local_dof(knode, jnode);
+          const std::size_t dof_k =
+              DGSEM::utils::local_dof<BasisData::NNodes>(knode, jnode);
           std::array<T, NVARS> u_node_k{};
           for (std::size_t var = 0; var < NVARS; ++var) {
             u_node_k[var] = u(ielem, jelem, dof_k, var);
@@ -205,7 +203,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
           }
         }
 
-        const std::size_t dof_j = local_dof(inode, jnode);
+        const std::size_t dof_j =
+            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
         // std::array<T, NVARS> u_node{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_node[var] = u(ielem, jelem, dof_j, var);
@@ -213,7 +212,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
 
         for (std::size_t lnode = jnode + 1; lnode < BasisData::NNodes;
              ++lnode) {
-          const std::size_t dof_l = local_dof(inode, lnode);
+          const std::size_t dof_l =
+              DGSEM::utils::local_dof<BasisData::NNodes>(inode, lnode);
           std::array<T, NVARS> u_node_l{};
           for (std::size_t var = 0; var < NVARS; ++var) {
             u_node_l[var] = u(ielem, jelem, dof_l, var);
@@ -243,13 +243,10 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
       std::size_t ielem, std::size_t jelem, const BasisData& basis,
       const MetricArray& contravariant_vectors, const Equations& eq,
       const ArrayU& u, ArrayDu& du, T alpha) {
-    auto local_dof = [](std::size_t inode, std::size_t jnode) {
-      return jnode * BasisData::NNodes + inode;
-    };
-
     for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
       for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
-        const std::size_t dof_i = local_dof(inode, jnode);
+        const std::size_t dof_i =
+            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
         std::array<T, NVARS> u_node{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_node[var] = u(ielem, jelem, dof_i, var);
@@ -257,7 +254,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
 
         for (std::size_t knode = inode + 1; knode < BasisData::NNodes;
              ++knode) {
-          const std::size_t dof_k = local_dof(knode, jnode);
+          const std::size_t dof_k =
+              DGSEM::utils::local_dof<BasisData::NNodes>(knode, jnode);
           std::array<T, NVARS> u_node_k{};
           for (std::size_t var = 0; var < NVARS; ++var) {
             u_node_k[var] = u(ielem, jelem, dof_k, var);
@@ -278,7 +276,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
           }
         }
 
-        const std::size_t dof_j = local_dof(inode, jnode);
+        const std::size_t dof_j =
+            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
         // std::array<T, NVARS> u_node{};
         for (std::size_t var = 0; var < NVARS; ++var) {
           u_node[var] = u(ielem, jelem, dof_j, var);
@@ -286,7 +285,8 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
 
         for (std::size_t lnode = jnode + 1; lnode < BasisData::NNodes;
              ++lnode) {
-          const std::size_t dof_l = local_dof(inode, lnode);
+          const std::size_t dof_l =
+              DGSEM::utils::local_dof<BasisData::NNodes>(inode, lnode);
           std::array<T, NVARS> u_node_l{};
           for (std::size_t var = 0; var < NVARS; ++var) {
             u_node_l[var] = u(ielem, jelem, dof_l, var);
@@ -356,14 +356,12 @@ struct FinitVolumeIntegral<T, NVARS, NumericFlux, 2> {
   fv_kernel(std::size_t ielem, std::size_t jelem, const BasisData& basis,
             const SubcellNormals& subcell_normals, const Equations& eq,
             const ArrayU& u, ArrayDu& du, T alpha) {
-    auto local_dof = [](std::size_t inode, std::size_t jnode) {
-      return jnode * BasisData::NNodes + inode;
-    };
-
     for (std::size_t jnode = 0; jnode < BasisData::NNodes; ++jnode) {
       for (std::size_t iface = 1; iface < BasisData::NNodes; ++iface) {
-        const std::size_t left_dof = local_dof(iface - 1, jnode);
-        const std::size_t right_dof = local_dof(iface, jnode);
+        const std::size_t left_dof =
+            DGSEM::utils::local_dof<BasisData::NNodes>(iface - 1, jnode);
+        const std::size_t right_dof =
+            DGSEM::utils::local_dof<BasisData::NNodes>(iface, jnode);
         std::array<T, NVARS> u_ll{};
         std::array<T, NVARS> u_rr{};
         for (std::size_t var = 0; var < NVARS; ++var) {
@@ -387,8 +385,10 @@ struct FinitVolumeIntegral<T, NVARS, NumericFlux, 2> {
 
     for (std::size_t inode = 0; inode < BasisData::NNodes; ++inode) {
       for (std::size_t iface = 1; iface < BasisData::NNodes; ++iface) {
-        const std::size_t bottom_dof = local_dof(inode, iface - 1);
-        const std::size_t top_dof = local_dof(inode, iface);
+        const std::size_t bottom_dof =
+            DGSEM::utils::local_dof<BasisData::NNodes>(inode, iface - 1);
+        const std::size_t top_dof =
+            DGSEM::utils::local_dof<BasisData::NNodes>(inode, iface);
         std::array<T, NVARS> u_ll{};
         std::array<T, NVARS> u_rr{};
         for (std::size_t var = 0; var < NVARS; ++var) {

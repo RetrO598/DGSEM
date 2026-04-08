@@ -98,9 +98,10 @@ struct Solution {
   Solution clone_shape() const {
     Solution tmp;
 
-    clone_view_shape(tmp.u_device, u_device);
-    clone_view_shape(tmp.du_device, du_device);
-    clone_view_shape(tmp.surface_flux_value_device, surface_flux_value_device);
+    DGSEM::utils::clone_view_shape(tmp.u_device, u_device);
+    DGSEM::utils::clone_view_shape(tmp.du_device, du_device);
+    DGSEM::utils::clone_view_shape(tmp.surface_flux_value_device,
+                                   surface_flux_value_device);
 
     return tmp;
   }

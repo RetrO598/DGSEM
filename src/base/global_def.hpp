@@ -3,6 +3,7 @@
 #include <Kokkos_Core_fwd.hpp>
 #include <array>
 #include <cstddef>
+#include <utils/local_dof.hpp>
 
 namespace DGSEM {
 using Device = Kokkos::Device<Kokkos::DefaultExecutionSpace,
@@ -120,21 +121,19 @@ struct SubcellNormalVectors<T, 2> {
   template <class Basis, class MatrixHost>
   void initialize_host(const std::array<std::size_t, 2>& n_cells,
                        const MatrixHost& contravariant_vectors) {
-    auto local_dof = [](std::size_t inode, std::size_t jnode) {
-      return jnode * Basis::NNodes + inode;
-    };
-
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
       for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
-          const std::size_t first_dof = local_dof(0, jnode);
+          const std::size_t first_dof =
+              DGSEM::utils::local_dof<Basis::NNodes>(0, jnode);
           normal_1_host(ielem, jelem, 0, jnode, 0) =
               contravariant_vectors(ielem, jelem, first_dof, 0, 0);
           normal_1_host(ielem, jelem, 0, jnode, 1) =
               contravariant_vectors(ielem, jelem, first_dof, 0, 1);
 
           for (std::size_t m = 0; m < Basis::NNodes; ++m) {
-            const std::size_t dof_m = local_dof(m, jnode);
+            const std::size_t dof_m =
+                DGSEM::utils::local_dof<Basis::NNodes>(m, jnode);
             const T wD = Basis::weights_host[0] * Basis::derivative_host(0, m);
             normal_1_host(ielem, jelem, 0, jnode, 0) +=
                 wD * contravariant_vectors(ielem, jelem, dof_m, 0, 0);
@@ -148,7 +147,8 @@ struct SubcellNormalVectors<T, 2> {
             normal_1_host(ielem, jelem, iface, jnode, 1) =
                 normal_1_host(ielem, jelem, iface - 1, jnode, 1);
             for (std::size_t m = 0; m < Basis::NNodes; ++m) {
-              const std::size_t dof_m = local_dof(m, jnode);
+              const std::size_t dof_m =
+                  DGSEM::utils::local_dof<Basis::NNodes>(m, jnode);
               const T wD =
                   Basis::weights_host[iface] * Basis::derivative_host(iface, m);
               normal_1_host(ielem, jelem, iface, jnode, 0) +=
@@ -160,14 +160,16 @@ struct SubcellNormalVectors<T, 2> {
         }
 
         for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-          const std::size_t first_dof = local_dof(inode, 0);
+          const std::size_t first_dof =
+              DGSEM::utils::local_dof<Basis::NNodes>(inode, 0);
           normal_2_host(ielem, jelem, inode, 0, 0) =
               contravariant_vectors(ielem, jelem, first_dof, 1, 0);
           normal_2_host(ielem, jelem, inode, 0, 1) =
               contravariant_vectors(ielem, jelem, first_dof, 1, 1);
 
           for (std::size_t m = 0; m < Basis::NNodes; ++m) {
-            const std::size_t dof_m = local_dof(inode, m);
+            const std::size_t dof_m =
+                DGSEM::utils::local_dof<Basis::NNodes>(inode, m);
             const T wD = Basis::weights_host[0] * Basis::derivative_host(0, m);
             normal_2_host(ielem, jelem, inode, 0, 0) +=
                 wD * contravariant_vectors(ielem, jelem, dof_m, 1, 0);
@@ -181,7 +183,8 @@ struct SubcellNormalVectors<T, 2> {
             normal_2_host(ielem, jelem, inode, iface, 1) =
                 normal_2_host(ielem, jelem, inode, iface - 1, 1);
             for (std::size_t m = 0; m < Basis::NNodes; ++m) {
-              const std::size_t dof_m = local_dof(inode, m);
+              const std::size_t dof_m =
+                  DGSEM::utils::local_dof<Basis::NNodes>(inode, m);
               const T wD =
                   Basis::weights_host[iface] * Basis::derivative_host(iface, m);
               normal_2_host(ielem, jelem, inode, iface, 0) +=

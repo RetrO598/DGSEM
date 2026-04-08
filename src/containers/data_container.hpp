@@ -6,6 +6,7 @@
 #include <base/base.hpp>
 #include <cstddef>
 #include <equations/equations.hpp>
+#include <utils/local_dof.hpp>
 
 namespace DGSEM {
 template <class T, std::size_t NDIMS>
@@ -154,11 +155,6 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
     return Basis::NNodes * Basis::NNodes;
   }
 
-  KOKKOS_INLINE_FUNCTION
-  constexpr static std::size_t local_dof(std::size_t inode, std::size_t jnode) {
-    return jnode * Basis::NNodes + inode;
-  }
-
   inline constexpr static void
   resize(const std::array<std::size_t, 2>& n_cells,
          StructuredElementContainer<T, 2>& container) {
@@ -201,7 +197,8 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
                                 static_cast<T>(0.5) * dy;
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
           for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-            const std::size_t dof = local_dof(inode, jnode);
+            const std::size_t dof =
+                DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode);
             const std::array<T, 2> ref_coord{
                 cell_x_offset +
                     static_cast<T>(0.5) * dx * Basis::nodes_host[inode],
@@ -224,15 +221,18 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
       for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
           for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-            const std::size_t dof = local_dof(inode, jnode);
+            const std::size_t dof =
+                DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode);
             T dx_dxi = T{};
             T dy_dxi = T{};
             T dx_deta = T{};
             T dy_deta = T{};
 
             for (std::size_t k = 0; k < Basis::NNodes; ++k) {
-              const std::size_t dof_x = local_dof(k, jnode);
-              const std::size_t dof_y = local_dof(inode, k);
+              const std::size_t dof_x =
+                  DGSEM::utils::local_dof<Basis::NNodes>(k, jnode);
+              const std::size_t dof_y =
+                  DGSEM::utils::local_dof<Basis::NNodes>(inode, k);
               dx_dxi += Basis::derivative_host(inode, k) *
                         coordinates(ielem, jelem, dof_x, 0);
               dy_dxi += Basis::derivative_host(inode, k) *
@@ -261,7 +261,8 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
       for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
           for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-            const std::size_t dof = local_dof(inode, jnode);
+            const std::size_t dof =
+                DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode);
             contravariant(ielem, jelem, dof, 0, 0) =
                 jacobian(ielem, jelem, dof, 1, 1);
             contravariant(ielem, jelem, dof, 0, 1) =
@@ -284,7 +285,8 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
       for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
           for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
-            const std::size_t dof = local_dof(inode, jnode);
+            const std::size_t dof =
+                DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode);
             inverse_jacobian(ielem, jelem, dof) =
                 1.0 / (jacobian(ielem, jelem, dof, 0, 0) *
                            jacobian(ielem, jelem, dof, 1, 1) -

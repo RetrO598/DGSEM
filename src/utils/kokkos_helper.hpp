@@ -3,6 +3,7 @@
 #include <base/base.hpp>
 
 namespace DGSEM {
+namespace utils {
 template <class ViewType>
 void clone_view_shape(ViewType& dst, const ViewType& src) {
   if constexpr (ViewType::rank == 1) {
@@ -20,4 +21,5 @@ void clone_view_shape(ViewType& dst, const ViewType& src) {
 
   Kokkos::deep_copy(dst, typename ViewType::value_type{0.0});
 }
+} // namespace utils
 } // namespace DGSEM

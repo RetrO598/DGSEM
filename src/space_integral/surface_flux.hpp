@@ -4,6 +4,7 @@
 #include <containers/containers.hpp>
 #include <cstddef>
 #include <equations/equations.hpp>
+#include <utils/local_dof.hpp>
 
 namespace DGSEM {
 
@@ -49,11 +50,6 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
   using MetricArray = typename jacobian_type_traits<T, 2>::JacobianMatrix;
   using ScalarArray = typename scalar_node_type_traits<T, 2>::ScalarArray;
 
-  KOKKOS_INLINE_FUNCTION static std::size_t local_dof(std::size_t inode,
-                                                      std::size_t jnode) {
-    return jnode * Basis::NNodes + inode;
-  }
-
   KOKKOS_INLINE_FUNCTION static std::size_t face_dof(std::size_t face,
                                                      std::size_t node) {
     return face * Basis::NNodes + node;
@@ -72,8 +68,10 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
       for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
         std::array<T, NVARS> u_ll{};
         std::array<T, NVARS> u_rr{};
-        const std::size_t left_dof = local_dof(Basis::NNodes - 1, jnode);
-        const std::size_t right_dof = local_dof(0, jnode);
+        const std::size_t left_dof =
+            DGSEM::utils::local_dof<Basis::NNodes>(Basis::NNodes - 1, jnode);
+        const std::size_t right_dof =
+            DGSEM::utils::local_dof<Basis::NNodes>(0, jnode);
         const T sign_jacobian =
             inverse_jacobian(ielem, jelem, right_dof) >= T{0} ? T{1} : T{-1};
         const std::array<T, 2> normal = {
@@ -101,8 +99,10 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
       for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
         std::array<T, NVARS> u_ll{};
         std::array<T, NVARS> u_rr{};
-        const std::size_t bottom_dof = local_dof(inode, Basis::NNodes - 1);
-        const std::size_t top_dof = local_dof(inode, 0);
+        const std::size_t bottom_dof =
+            DGSEM::utils::local_dof<Basis::NNodes>(inode, Basis::NNodes - 1);
+        const std::size_t top_dof =
+            DGSEM::utils::local_dof<Basis::NNodes>(inode, 0);
         const T sign_jacobian =
             inverse_jacobian(ielem, jelem, top_dof) >= T{0} ? T{1} : T{-1};
         const std::array<T, 2> normal = {
