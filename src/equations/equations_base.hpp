@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Kokkos_Macros.hpp"
 #include <Kokkos_Core.hpp>
 #include <cstddef>
 
@@ -8,11 +9,13 @@ namespace equations {
 class Equations1DBase {
 
 public:
+  KOKKOS_INLINE_FUNCTION
   virtual ~Equations1DBase() = default;
 };
 
 class Equations2DBase {
 public:
+  KOKKOS_INLINE_FUNCTION
   virtual ~Equations2DBase() = default;
 };
 
