@@ -95,7 +95,8 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
 
     const std::size_t bottom_i = neighbors(ielem, jelem, 1, 0);
     const std::size_t bottom_j = neighbors(ielem, jelem, 1, 1);
-    if (bottom_i != static_cast<std::size_t>(-1)) {
+    if (bottom_i != static_cast<std::size_t>(-1) &&
+        bottom_j != static_cast<std::size_t>(-1)) {
       for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
         std::array<T, NVARS> u_ll{};
         std::array<T, NVARS> u_rr{};

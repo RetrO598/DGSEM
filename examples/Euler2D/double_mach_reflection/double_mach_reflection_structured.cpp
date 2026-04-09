@@ -7,50 +7,76 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <numbers>
 #include <string>
 
 template <class T>
-struct BlastWaveInitial
-    : public DGSEM::AbstractInitial<BlastWaveInitial<T>,
+KOKKOS_INLINE_FUNCTION std::array<T, 4>
+double_mach_state(const std::array<T, 2>& coordinate, T time, T gamma) {
+  constexpr T one_sixth = static_cast<T>(1.0 / 6.0);
+  const T shock_position =
+      one_sixth + (coordinate[1] + static_cast<T>(20.0) * time) /
+                      std::sqrt(static_cast<T>(3.0));
+
+  if (coordinate[0] < shock_position) {
+    constexpr T phi = static_cast<T>(std::numbers::pi / 6.0);
+    const T sin_phi = std::sin(phi);
+    const T cos_phi = std::cos(phi);
+    return DGSEM::utils::prim_to_cons(
+        std::array<T, 4>{static_cast<T>(8.0), static_cast<T>(8.25) * cos_phi,
+                         -static_cast<T>(8.25) * sin_phi,
+                         static_cast<T>(116.5)},
+        gamma);
+  }
+
+  return DGSEM::utils::prim_to_cons(
+      std::array<T, 4>{static_cast<T>(1.4), static_cast<T>(0.0),
+                       static_cast<T>(0.0), static_cast<T>(1.0)},
+      gamma);
+}
+
+template <class T>
+struct DoubleMachReflectionInitial
+    : public DGSEM::AbstractInitial<DoubleMachReflectionInitial<T>,
                                     DGSEM::equations::CompressibleEuler2D<T>> {
   using Eq = DGSEM::equations::CompressibleEuler2D<T>;
   inline constexpr static std::size_t NDIMS = Eq::NDIMS;
   inline constexpr static std::size_t NVARS = Eq::NVARS;
 
+  explicit DoubleMachReflectionInitial(T gamma_) : gamma(gamma_) {}
+
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
-    const T x = coordinate[0];
-    const T y = coordinate[1];
-    const T r = std::sqrt(x * x + y * y);
+    return double_mach_state(coordinate, static_cast<T>(0.0), gamma);
+  }
 
-    T rho;
-    T v1;
-    T v2;
-    T p;
-    if (r > static_cast<T>(0.5)) {
-      rho = static_cast<T>(1.0);
-      v1 = static_cast<T>(0.0);
-      v2 = static_cast<T>(0.0);
-      p = static_cast<T>(1.0e-3);
-    } else {
-      const T phi = std::atan2(y, x);
-      rho = static_cast<T>(1.1691);
-      v1 = static_cast<T>(0.1882) * std::cos(phi);
-      v2 = static_cast<T>(0.1882) * std::sin(phi);
-      p = static_cast<T>(1.245);
-    }
+  T gamma;
+};
 
-    return DGSEM::utils::prim_to_cons(
-        std::array<T, 4>{rho, v1, v2, p}, static_cast<T>(1.4));
+template <class T>
+struct DoubleMachReflectionBoundaryState {
+  KOKKOS_INLINE_FUNCTION std::array<T, 4>
+  operator()(const std::array<T, 2>& coord, T time) const {
+    return double_mach_state(coord, time, gamma);
+  }
+
+  T gamma;
+};
+
+template <class T>
+struct BottomInflowRegion {
+  KOKKOS_INLINE_FUNCTION bool operator()(const std::array<T, 2>& coord,
+                                         T /*time*/) const {
+    return coord[0] < static_cast<T>(1.0 / 6.0);
   }
 };
 
-int main() {
-  Kokkos::initialize();
+int main(int argc, char* argv[]) {
+  Kokkos::initialize(argc, argv);
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleEuler2D<value_type>;
-    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 3>;
+    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 4>;
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
@@ -59,63 +85,77 @@ int main() {
 
     MyBasis::initialize();
 
-    auto boundaries =
-        DGSEM::BoundarySet(DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{},
-                           DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{});
+    constexpr value_type gamma = 1.4;
+    DoubleMachReflectionBoundaryState<value_type> inflow{gamma};
+    BottomInflowRegion<value_type> bottom_inflow_region{};
+
+    auto boundaries = DGSEM::BoundarySet(
+        DGSEM::DirichletBC(inflow), DGSEM::OutflowBC{},
+        DGSEM::MixedDirichletSlipWallBC(inflow, bottom_inflow_region),
+        DGSEM::DirichletBC(inflow));
     using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
                                            Mesh, decltype(boundaries)>;
     using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-    std::size_t nx = 256;
-    std::size_t ny = 256;
-    value_type t_final = 1.2;
-    std::string output_path = "blast_wave_hg_solution.txt";
+    std::size_t nx = 480;
+    std::size_t ny = 120;
+    value_type t_final = 0.2;
+    std::string output_path = "double_mach_reflection_structured.txt";
+    if (argc > 1)
+      nx = static_cast<std::size_t>(std::strtoull(argv[1], nullptr, 10));
+    if (argc > 2)
+      ny = static_cast<std::size_t>(std::strtoull(argv[2], nullptr, 10));
+    if (argc > 3)
+      t_final = std::strtod(argv[3], nullptr);
+    if (argc > 4)
+      output_path = argv[4];
 
-    std::array<value_type, 4> domain_mesh = {-2.0, 2.0, -2.0, 2.0};
+    std::array<value_type, 4> domain_mesh = {0.0, 4.0, 0.0, 1.0};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
-        std::array<value_type, 2>{-2.0, -2.0},
-        std::array<value_type, 2>{2.0, 2.0}};
+        std::array<value_type, 2>{0.0, 0.0},
+        std::array<value_type, 2>{4.0, 1.0}};
     std::array<std::size_t, 2> n_cells = {nx, ny};
 
     Mesh mesh(domain_mesh, n_cells);
-    Eq eq{1.4};
+    Eq eq{gamma};
 
     DGSEM::StructuredElementContainer<value_type, 2> container;
     DGSEM::StructuredElementInitializer<
         value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 2>>, 2>
         initializer{DGSEM::LinearMapping<std::array<value_type, 2>>(
                         mapping_domain[0], mapping_domain[1]),
-                    {true, true}};
+                    {false, false}};
 
     initializer.init_elements(n_cells, container);
-    // container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
     solver.set_indicator_parameters(0.5, 0.001, false);
 
     Solution sol(mesh);
-    BlastWaveInitial<value_type> initial{};
+    DoubleMachReflectionInitial<value_type> initial{gamma};
     solver.initialize(initial, sol);
 
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     TimeIntegrator time_integrator(sol, mesh);
 
-    const value_type cfl = 0.5;
+    const value_type cfl = 0.2;
     const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
     const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
-    const value_type max_speed = 2.0;
-    const value_type dt =
-        cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
+    const value_type max_speed = 12.0;
+
     int iter = 0;
     value_type t = 0.0;
     while (t < t_final) {
-      time_integrator.step(solver, sol, dt);
-      t += dt;
-      iter++;
+      const value_type dt =
+          cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
+      const value_type dt_step = std::min(dt, t_final - t);
+      time_integrator.step(solver, sol, dt_step);
+      t += dt_step;
+      ++iter;
 
-      if (iter % 100 == 0) {
-        std::cout << "Iter: " << std::setw(5) << iter
-                  << "  Time: " << std::fixed << std::setprecision(4) << t
+      if (iter % 50 == 0) {
+        std::cout << "Iter: " << std::setw(6) << iter
+                  << "  Time: " << std::fixed << std::setprecision(6) << t
                   << std::endl;
       }
     }

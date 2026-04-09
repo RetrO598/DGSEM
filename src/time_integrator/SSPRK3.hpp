@@ -150,13 +150,13 @@ public:
       : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()), mesh(mesh_) {};
 
   void step(Solver& solver, Solution& sol, T dt) override {
-    solver.calc_rhs(sol);
+    solver.calc_rhs(sol, this->time);
 
     parallel_ma2<Equations>::apply(tmp1.u_device, sol.u_device, sol.du_device,
                                    static_cast<T>(1.0), dt, solver.get_ndofs(),
                                    mesh.get_num_cells());
 
-    solver.calc_rhs(tmp1);
+    solver.calc_rhs(tmp1, this->time + dt);
 
     parallel_ma3<Equations>::apply(tmp2.u_device, sol.u_device, tmp1.u_device,
                                    tmp1.du_device, static_cast<T>(3.0 / 4.0),
@@ -164,13 +164,15 @@ public:
                                    static_cast<T>(1.0 / 4.0) * dt,
                                    solver.get_ndofs(), mesh.get_num_cells());
 
-    solver.calc_rhs(tmp2);
+    solver.calc_rhs(tmp2, this->time + static_cast<T>(0.5) * dt);
 
     parallel_ma3<Equations>::apply(sol.u_device, sol.u_device, tmp2.u_device,
                                    tmp2.du_device, static_cast<T>(1.0 / 3.0),
                                    static_cast<T>(2.0 / 3.0),
                                    static_cast<T>(2.0 / 3.0) * dt,
                                    solver.get_ndofs(), mesh.get_num_cells());
+
+    this->time += dt;
   }
 
 private:

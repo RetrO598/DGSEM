@@ -34,17 +34,16 @@ int main() {
         u = 0.0;
         p = 1.0;
       }
-      double mom = rho * u;
-      double gamma = 1.4;
-      double rhoE = p / (gamma - 1.0) + 0.5 * rho * u * u;
-      return std::array<double, 3>{rho, mom, rhoE};
+      return DGSEM::utils::prim_to_cons(std::array<double, 3>{rho, u, p},
+                                        1.4);
     };
 
     auto boundaries = DGSEM::BoundarySet(
-        DGSEM::DirichletBC(std::array<double, 3>{
-            3.857, 2.629 * 3.857, 10.333 / 0.4 + 0.5 * 3.857 * 2.629 * 2.629}),
-        DGSEM::DirichletBC(
-            std::array<double, 3>{1.0 + 0.2 * std::sin(25.0), 0.0, 1.0 / 0.4}));
+        DGSEM::DirichletBC(DGSEM::utils::prim_to_cons(
+            std::array<double, 3>{3.857, 2.629, 10.333}, 1.4)),
+        DGSEM::DirichletBC(DGSEM::utils::prim_to_cons(
+            std::array<double, 3>{1.0 + 0.2 * std::sin(25.0), 0.0, 1.0},
+            1.4)));
 
     using Mesh = DGSEM::StructuredMesh<double, 1>;
     using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,

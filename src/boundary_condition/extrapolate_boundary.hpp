@@ -13,11 +13,12 @@ struct ExtrapolateBoundary {
 
   // Kokkos implementation
   template <class Equations_, class SurfaceFlux_, class Mesh, class T,
-            std::size_t NDIMS, class ArrayU, class ArrayFlux>
+            std::size_t NDIMS, class ArrayU, class ElementData,
+            class ArrayFlux>
   KOKKOS_INLINE_FUNCTION void
   apply_device(const Mesh& mesh, const Equations& eq, const ArrayU& u,
-               ArrayFlux& surface_flux, std::size_t face_id, T time,
-               int index = 0) const {
+               const ElementData& element_data, ArrayFlux& surface_flux,
+               std::size_t face_id, T time, int index = 0) const {
     if constexpr (NDIMS == 1) {
       std::size_t n_cells = mesh.get_num_cells(0);
       std::size_t n_nodes = u.extent(1);

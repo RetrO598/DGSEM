@@ -30,25 +30,10 @@ struct KelvinHelmholtzInitial
     const T v2 = static_cast<T>(0.1) *
                  std::sin(static_cast<T>(2.0) * std::numbers::pi_v<T> * x);
     const T p = static_cast<T>(1.0);
-    const T gamma = static_cast<T>(1.4);
-    const T rhoE = p / (gamma - static_cast<T>(1.0)) +
-                   static_cast<T>(0.5) * rho * (v1 * v1 + v2 * v2);
-    return {rho, rho * v1, rho * v2, rhoE};
+    return DGSEM::utils::prim_to_cons(
+        std::array<T, 4>{rho, v1, v2, p}, static_cast<T>(1.4));
   }
 };
-
-template <class T>
-std::array<T, 4> cons_to_prim(const std::array<T, 4>& u, T gamma) {
-  const T rho = u[0];
-  const T rhou = u[1];
-  const T rhov = u[2];
-  const T rhoE = u[3];
-  const T v1 = rhou / rho;
-  const T v2 = rhov / rho;
-  const T p = (gamma - static_cast<T>(1.0)) *
-              (rhoE - static_cast<T>(0.5) * rho * (v1 * v1 + v2 * v2));
-  return {rho, v1, v2, p};
-}
 
 int main(int argc, char* argv[]) {
   Kokkos::initialize(argc, argv);
@@ -148,7 +133,7 @@ int main(int argc, char* argv[]) {
           const std::array<value_type, 4> u_cons = {
               u_host(ielem, jelem, dof, 0), u_host(ielem, jelem, dof, 1),
               u_host(ielem, jelem, dof, 2), u_host(ielem, jelem, dof, 3)};
-          const auto u_prim = cons_to_prim(u_cons, eq.get_gamma());
+          const auto u_prim = DGSEM::utils::cons_to_prim(u_cons, eq);
           solution_file << coord_host(ielem, jelem, dof, 0) << " "
                         << coord_host(ielem, jelem, dof, 1) << " " << u_prim[0]
                         << " " << u_prim[1] << " " << u_prim[2] << " "

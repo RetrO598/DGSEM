@@ -20,6 +20,15 @@ struct StructuredElementContainer {
   using Matrix = jacobian_type_traits<T, NDIMS>::JacobianMatrix;
   using MatrixHost = jacobian_type_traits<T, NDIMS>::JacobianMatrixHost;
 
+  struct DeviceData {
+    CoordArray node_coordinates;
+    IndexArray left_neighbors;
+    Matrix jacobian_matrix;
+    Matrix contravariant_vectors;
+    ScalarArray inverse_jacobian;
+    typename SubcellNormalVectors<T, NDIMS>::DeviceData subcell_normals;
+  };
+
   std::array<std::size_t, NDIMS> nelements;
   CoordArrayHost node_coordinates;
   IndexArrayHost left_neighbors;
@@ -33,6 +42,12 @@ struct StructuredElementContainer {
   Matrix jacobian_matrix_device;
   Matrix contravariant_vectors_device;
   ScalarArray inverse_jacobian_device;
+
+  KOKKOS_INLINE_FUNCTION DeviceData device_data() const {
+    return DeviceData{node_coordinates_device, left_neighbors_device,
+                      jacobian_matrix_device, contravariant_vectors_device,
+                      inverse_jacobian_device, subcell_normals.device_data()};
+  }
 
   void sync_to_device() {
     Kokkos::deep_copy(node_coordinates_device, node_coordinates);

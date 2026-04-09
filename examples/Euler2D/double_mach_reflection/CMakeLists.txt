@@ -1,0 +1,2 @@
+add_executable(double_mach_reflection_structured double_mach_reflection_structured.cpp)
+target_link_libraries(double_mach_reflection_structured PRIVATE dgsem)

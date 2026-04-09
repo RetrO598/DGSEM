@@ -50,11 +50,11 @@ public:
 
   void calc_surface_integral(solution& sol);
 
-  void apply_boundary_condition(solution& sol);
+  void apply_boundary_condition(solution& sol, value_type time);
 
   void apply_jacobian(solution& sol);
 
-  void calc_rhs(solution& sol);
+  void calc_rhs(solution& sol, value_type time);
 
   void set_indicator_parameters(value_type alpha_max_, value_type alpha_min_,
                                 bool alpha_smooth_) {
@@ -86,9 +86,9 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::
     initialize(const AbstractInitial<Derived, Equations>& initial_condition,
                solution& sol) {
-  InitialFunctor<value_type, AbstractInitial<Derived, Equations>, NDIMS>::apply(
-      sol.u_device, element.node_coordinates_device, initial_condition, n_cells,
-      n_dofs, NVARS);
+  InitialFunctor<value_type, Derived, NDIMS>::apply(
+      sol.u_device, element.node_coordinates_device,
+      static_cast<const Derived&>(initial_condition), n_cells, n_dofs, NVARS);
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -158,17 +158,20 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
-                      BoundarySetType>::apply_boundary_condition(solution&
-                                                                     sol) {
+                      BoundarySetType>::apply_boundary_condition(solution& sol,
+                                                                 value_type
+                                                                     time) {
+  const auto element_data = element.device_data();
   for (std::size_t i = 0; i < NDIMS; ++i) {
     boundary_set
         .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
-            mesh, eq, sol.u_device, sol.surface_flux_value_device, 2 * i, 0.0);
+            mesh, eq, sol.u_device, element_data, sol.surface_flux_value_device,
+            2 * i, time);
 
     boundary_set
         .template apply<Equations, SurfaceFlux, Mesh, value_type, NDIMS>(
-            mesh, eq, sol.u_device, sol.surface_flux_value_device, 2 * i + 1,
-            0.0);
+            mesh, eq, sol.u_device, element_data, sol.surface_flux_value_device,
+            2 * i + 1, time);
   }
 }
 
@@ -183,14 +186,15 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
-                      BoundarySetType>::calc_rhs(solution& sol) {
+                      BoundarySetType>::calc_rhs(solution& sol,
+                                                 value_type time) {
   Kokkos::deep_copy(sol.du_device, value_type{0.0});
 
   calc_volume_integral(sol);
 
   calc_interface_flux(sol);
 
-  apply_boundary_condition(sol);
+  apply_boundary_condition(sol, time);
 
   calc_surface_integral(sol);
 

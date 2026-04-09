@@ -32,10 +32,8 @@ int main() {
         u = 0.0;
         p = 0.1;
       }
-      double mom = rho * u;
-      double gamma = 1.4;
-      double rhoE = p / (gamma - 1.0) + 0.5 * rho * u * u;
-      return std::array<double, 3>{rho, mom, rhoE};
+      return DGSEM::utils::prim_to_cons(std::array<double, 3>{rho, u, p},
+                                        1.4);
     };
 
     auto boundaries = DGSEM::BoundarySet(DGSEM::DirichletBC(dirichFunc),
