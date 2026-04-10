@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.28)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -57,7 +57,7 @@ if(ENABLE_CUDA)
     set(CMAKE_CUDA_FLAGS
         "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr --expt-extended-lambda"
     )
-    set(Kokkos_ARCH_AMPERE86 ON CACHE BOOL "" FORCE)
+    set(Kokkos_ARCH_AMPERE89 ON CACHE BOOL "" FORCE)
 endif()
 
 FetchContent_Declare(

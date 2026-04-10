@@ -35,12 +35,31 @@ public:
   inline static View1D nodes;
   inline static View1D weights;
   inline static View1D inv_weights;
+
+  /*For surface integrals, boundary_interpolate_left and
+    boundary_interpolate_right equal to \frac{l_i(-1)}{w_i} and
+    \frac{l_i(1)}{w_i} respectively, where l_i is the i-th Lagrange polynomial
+    and w_i is the i-th quadrature weight. Note the the negative sign on the RHS
+   of the DG operator is applied through the inverse jacobians.*/
   inline static View1D boundary_interpolation_left;
   inline static View1D boundary_interpolation_right;
+
+  /*Polynomial derivative matrices D.*/
   inline static View2D derivative_matrix;
+
+  /*Dsplit matrix for split-form differentiation: Dsplit = 2D -
+   * M⁻¹B. Note the the negative sign on the RHS of the DG operator is applied
+   * through the inverse jacobians.*/
   inline static View2D derivative_split;
   inline static View2D derivative_split_transpose;
+
+  /*Dhat matrix = -M^{-1} D^T M for weak form differentiation. Note the the
+   * negative sign on the RHS of the DG operator is applied through the inverse
+   * jacobians.*/
   inline static View2D derivative_dhat;
+
+  /*Inverse Vandermonde matrix for Legendre polynomials, to be used in nodal to
+   * modal transformation in limiting indicators.*/
   inline static View2D inverse_vandermonde_legendre;
 
   inline static std::array<T, NNodes> nodes_host;
