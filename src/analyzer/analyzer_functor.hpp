@@ -9,10 +9,11 @@ template <class Basis, class Equations, class Analyzer, class Solution>
 struct AnalyzerFunctor {
   using traits = equations::EquationTraits<Equations>;
   using T = typename traits::value_type;
+  using DataArray = typename solution_type_traits<T, traits::NDIMS>::DataArray;
 
   constexpr static std::size_t NVARS = traits::NVARS;
 
-  AnalyzerFunctor(const Solution& sol_) : sol(sol_) {}
+  AnalyzerFunctor(const Solution& sol_) : u_device(sol_.u_device) {}
 
   static void apply(Analyzer& analyzer_, const Solution& sol_,
                     std::array<std::size_t, traits::NDIMS> n_elems_)
@@ -45,7 +46,7 @@ struct AnalyzerFunctor {
 
     Kokkos::Array<T, NVARS> u{};
     for (std::size_t var = 0; var < NVARS; ++var) {
-      u[var] = sol.u_device(ielem, node, var);
+      u[var] = u_device(ielem, node, var);
     }
     analyzer_(u);
   }
@@ -63,7 +64,7 @@ struct AnalyzerFunctor {
     Kokkos::Array<T, NVARS> u{};
     for (std::size_t var = 0; var < NVARS; ++var) {
       std::size_t node = DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j);
-      u[var] = sol.u_device(ielem, jelem, node, var);
+      u[var] = u_device(ielem, jelem, node, var);
     }
     analyzer_(u);
   }
@@ -76,6 +77,6 @@ struct AnalyzerFunctor {
     dst.join(src);
   }
 
-  const Solution& sol;
+  DataArray u_device;
 };
 } // namespace DGSEM

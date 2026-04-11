@@ -43,9 +43,9 @@ struct StructuredElementContainer {
   Matrix contravariant_vectors_device;
   ScalarArray inverse_jacobian_device;
 
-  KOKKOS_INLINE_FUNCTION DeviceData device_data() const {
+  DeviceData device_data() const {
     return DeviceData{node_coordinates_device, left_neighbors_device,
-                      jacobian_matrix_device, contravariant_vectors_device,
+                      jacobian_matrix_device,  contravariant_vectors_device,
                       inverse_jacobian_device, subcell_normals.device_data()};
   }
 

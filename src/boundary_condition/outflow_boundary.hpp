@@ -56,7 +56,6 @@ struct OutflowBC {
   {
     using traits = equations::EquationTraits<Equations>;
     constexpr std::size_t NVARS = traits::NVARS;
-    constexpr std::size_t NVARS_LOCAL = traits::NVARS;
 
     const auto n_cells = mesh.get_num_cells();
     std::size_t n_nodes = 0;
@@ -84,8 +83,8 @@ struct OutflowBC {
     auto write_flux = [&](std::size_t ielem, std::size_t jelem,
                           std::size_t boundary_dof, std::size_t storage_dof,
                           std::size_t dim, bool left_state_inner) {
-      std::array<T, NVARS_LOCAL> u_inner{};
-      for (std::size_t var = 0; var < NVARS_LOCAL; ++var) {
+      std::array<T, NVARS> u_inner{};
+      for (std::size_t var = 0; var < NVARS; ++var) {
         u_inner[var] = u(ielem, jelem, boundary_dof, var);
       }
       const auto normal = get_normal(ielem, jelem, boundary_dof, dim);
@@ -93,7 +92,7 @@ struct OutflowBC {
           left_state_inner
               ? SurfaceFlux::numerical_flux(eq, u_inner, u_inner, normal)
               : SurfaceFlux::numerical_flux(eq, u_inner, u_inner, normal);
-      for (std::size_t var = 0; var < NVARS_LOCAL; ++var) {
+      for (std::size_t var = 0; var < NVARS; ++var) {
         surface_flux(ielem, jelem, storage_dof, var) = boundary_flux[var];
       }
     };
