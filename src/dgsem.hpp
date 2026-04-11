@@ -1,5 +1,6 @@
 #pragma once
 
+#include <analyzer/analyzer.hpp>
 #include <base/base.hpp>
 #include <boundary_condition/boundary_condition.hpp>
 #include <equations/equations.hpp>

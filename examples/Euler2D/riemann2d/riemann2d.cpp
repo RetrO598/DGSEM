@@ -47,8 +47,8 @@ struct Riemann2DInitial
       p = 1.0;
     }
 
-    return DGSEM::utils::prim_to_cons(
-        std::array<T, 4>{rho, v1, v2, p}, static_cast<T>(1.4));
+    return DGSEM::utils::prim_to_cons(std::array<T, 4>{rho, v1, v2, p},
+                                      static_cast<T>(1.4));
   }
 };
 
@@ -67,21 +67,21 @@ int main() {
     MyBasis::initialize();
 
     auto boundaries =
-        DGSEM::BoundarySet(DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{},
-                           DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{});
+        DGSEM::BoundarySet(DGSEM::OutflowBC{}, DGSEM::OutflowBC{},
+                           DGSEM::OutflowBC{}, DGSEM::OutflowBC{});
     using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
                                            Mesh, decltype(boundaries)>;
     using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-    std::size_t nx = 512;
-    std::size_t ny = 512;
+    std::size_t nx = 256;
+    std::size_t ny = 256;
     value_type t_final = 0.25;
     std::string output_path = "riemann2d.txt";
 
-    std::array<value_type, 4> domain_mesh = {-0.5, 1.5, -0.5, 1.5};
+    std::array<value_type, 4> domain_mesh = {0.0, 1.0, 0.0, 1.0};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
-        std::array<value_type, 2>{-0.5, -0.5},
-        std::array<value_type, 2>{1.5, 1.5}};
+        std::array<value_type, 2>{0.0, 0.0},
+        std::array<value_type, 2>{1.0, 1.0}};
     std::array<std::size_t, 2> n_cells = {nx, ny};
 
     Mesh mesh(domain_mesh, n_cells);
@@ -92,10 +92,9 @@ int main() {
         value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 2>>, 2>
         initializer{DGSEM::LinearMapping<std::array<value_type, 2>>(
                         mapping_domain[0], mapping_domain[1]),
-                    {true, true}};
+                    {false, false}};
 
     initializer.init_elements(n_cells, container);
-    // container.sync_to_device();
 
     Solver solver(eq, mesh, container, boundaries);
     solver.set_indicator_parameters(0.5, 0.001, false);
@@ -115,10 +114,25 @@ int main() {
         cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
     int iter = 0;
     value_type t = 0.0;
+
+    using Analyzer = DGSEM::CompositeAnalyzer<
+        MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+
+    Analyzer analyzer;
     while (t < t_final) {
       time_integrator.step(solver, sol, dt);
       t += dt;
       iter++;
+
+      DGSEM::AnalyzerFunctor<MyBasis, Eq, Analyzer, Solution>::apply(
+          analyzer, sol, n_cells);
+
+      if (analyzer.get<DGSEM::DivergenceChecker<value_type, Eq::NVARS>>()
+              .has_nan) {
+        std::cerr << "NaN detected at iter " << iter << ", time " << t
+                  << std::endl;
+        break;
+      }
 
       if (iter % 100 == 0) {
         std::cout << "Iter: " << std::setw(5) << iter
