@@ -1,3 +1,7 @@
+#include "Kokkos_Macros.hpp"
+#include "boundary_condition/dirichlet_boundary.hpp"
+#include "boundary_condition/periodic_boundary.hpp"
+#include "utils/state_conversion.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <cstddef>
@@ -9,8 +13,8 @@
 #include <string>
 
 template <class T>
-struct Riemann2DInitial
-    : public DGSEM::AbstractInitial<Riemann2DInitial<T>,
+struct AstroJetInitial
+    : public DGSEM::AbstractInitial<AstroJetInitial<T>,
                                     DGSEM::equations::CompressibleEuler2D<T>> {
   using Eq = DGSEM::equations::CompressibleEuler2D<T>;
   inline constexpr static std::size_t NDIMS = Eq::NDIMS;
@@ -18,60 +22,36 @@ struct Riemann2DInitial
 
   KOKKOS_INLINE_FUNCTION
   std::array<T, NVARS> operator()(std::array<T, NDIMS> coordinate) const {
-    const T x = coordinate[0];
-    const T y = coordinate[1];
-
-    T rho;
-    T v1;
-    T v2;
-    T p;
-    // if (x >= 0.5 && y >= 0.5) {
-    //   rho = 0.5313;
-    //   v1 = 0.0;
-    //   v2 = 0.0;
-    //   p = 0.4;
-    // } else if (x < 0.5 && y >= 0.5) {
-    //   rho = 1.0;
-    //   v1 = 0.7276;
-    //   v2 = 0.0;
-    //   p = 1.0;
-    // } else if (x < 0.5 && y < 0.5) {
-    //   rho = 0.8;
-    //   v1 = 0.0;
-    //   v2 = 0.0;
-    //   p = 1.0;
-    // } else if (x >= 0.5 && y < 0.5) {
-    //   rho = 1.0;
-    //   v1 = 0.0;
-    //   v2 = 0.7276;
-    //   p = 1.0;
-    // }
-
-    if (x >= 0.8 && y >= 0.8) {
-      rho = 1.5;
-      v1 = 0.0;
-      v2 = 0.0;
-      p = 1.5;
-    } else if (x < 0.8 && y >= 0.8) {
-      rho = 0.5323;
-      v1 = 1.206;
-      v2 = 0.0;
-      p = 0.3;
-    } else if (x < 0.8 && y < 0.8) {
-      rho = 0.138;
-      v1 = 1.206;
-      v2 = 1.206;
-      p = 0.029;
-    } else if (x >= 0.8 && y < 0.8) {
-      rho = 0.5323;
-      v1 = 0.0;
-      v2 = 1.206;
-      p = 0.3;
-    }
+    T rho = 0.5;
+    T v1 = 0.0;
+    T v2 = 0.0;
+    T p = 0.4127;
 
     return DGSEM::utils::prim_to_cons(std::array<T, 4>{rho, v1, v2, p},
                                       static_cast<T>(1.4));
   }
+};
+
+template <class T>
+struct AstroJetBoundaryState {
+  KOKKOS_INLINE_FUNCTION std::array<T, 4>
+  operator()(const std::array<T, 2>& coord, T time) const {
+    T rho = 0.5;
+    T v1 = 0.0;
+    T v2 = 0.0;
+    T p = 0.4127;
+    if (time > 0.0 && std::abs(coord[0] + 0.5) < 1e-8 &&
+        std::abs(coord[1]) < 0.05) {
+      rho = 5.0;
+      v1 = 800.0;
+      v2 = 0.0;
+      p = 0.4127;
+    }
+
+    return DGSEM::utils::prim_to_cons(std::array<T, 4>{rho, v1, v2, p}, gamma);
+  }
+
+  T gamma;
 };
 
 int main() {
@@ -79,7 +59,7 @@ int main() {
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleEuler2D<value_type>;
-    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 5>;
+    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 3>;
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
@@ -88,22 +68,24 @@ int main() {
 
     MyBasis::initialize();
 
-    auto boundaries =
-        DGSEM::BoundarySet(DGSEM::OutflowBC{}, DGSEM::OutflowBC{},
-                           DGSEM::OutflowBC{}, DGSEM::OutflowBC{});
+    AstroJetBoundaryState<value_type> inflow{1.4};
+
+    auto boundaries = DGSEM::BoundarySet(
+        DGSEM::DirichletBC{inflow}, DGSEM::DirichletBC{inflow},
+        DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{});
     using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
                                            Mesh, decltype(boundaries)>;
     using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
     std::size_t nx = 256;
     std::size_t ny = 256;
-    value_type t_final = 0.8;
-    std::string output_path = "riemann2d.txt";
+    value_type t_final = 0.001;
+    std::string output_path = "astro_jet.txt";
 
-    std::array<value_type, 4> domain_mesh = {0.0, 1.0, 0.0, 1.0};
+    std::array<value_type, 4> domain_mesh = {-0.5, 0.5, -0.5, 0.5};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
-        std::array<value_type, 2>{0.0, 0.0},
-        std::array<value_type, 2>{1.0, 1.0}};
+        std::array<value_type, 2>{-0.5, -0.5},
+        std::array<value_type, 2>{0.5, 0.5}};
     std::array<std::size_t, 2> n_cells = {nx, ny};
 
     Mesh mesh(domain_mesh, n_cells);
@@ -114,44 +96,55 @@ int main() {
         value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 2>>, 2>
         initializer{DGSEM::LinearMapping<std::array<value_type, 2>>(
                         mapping_domain[0], mapping_domain[1]),
-                    {false, false}};
+                    {false, true}};
 
     initializer.init_elements(n_cells, container);
 
     Solver solver(eq, mesh, container, boundaries);
-    solver.set_indicator_parameters(0.5, 0.001, false);
+    solver.set_indicator_parameters(0.3, 0.0001, false);
 
     Solution sol(mesh);
-    Riemann2DInitial<value_type> initial{};
+    AstroJetInitial<value_type> initial{};
     solver.initialize(initial, sol);
+
+    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
+    TimeIntegrator time_integrator(sol, mesh);
+
+    const value_type cfl = 0.1;
+    const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
+    const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
+    const value_type max_speed = 800.0;
+    // const value_type dt =
+    //     cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
+    const value_type dt = 1e-8;
+    int iter = 0;
+    value_type t = 0.0;
 
     using Analyzer = DGSEM::CompositeAnalyzer<
         MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+
     Analyzer analyzer;
+    while (t < t_final) {
+      time_integrator.step(solver, sol, dt);
+      t += dt;
+      iter++;
 
-    using AnalyzerObserver =
-        DGSEM::AnalyzerObserver<MyBasis, Eq, Solution, Analyzer>;
+      DGSEM::AnalyzerFunctor<MyBasis, Eq, Analyzer, Solution>::apply(
+          analyzer, sol, n_cells);
 
-    using DGSEM::PrintObserver;
+      if (analyzer.get<DGSEM::DivergenceChecker<value_type, Eq::NVARS>>()
+              .has_nan) {
+        std::cerr << "NaN detected at iter " << iter << ", time " << t
+                  << std::endl;
+        break;
+      }
 
-    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
-    TimeIntegrator time_integrator(sol, mesh, t_final);
-
-    // CFL, dt 计算
-    const value_type cfl = 0.2;
-    const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
-    const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
-    const value_type max_speed = 2.0;
-    const value_type dt =
-        cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
-
-    // 注册 observer
-    time_integrator.add_observer(
-        std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
-    time_integrator.add_observer(std::make_unique<PrintObserver>(100));
-
-    // 用 observer 驱动积分
-    time_integrator.solve(solver, sol, dt);
+      if (iter % 100 == 0) {
+        std::cout << "Iter: " << std::setw(5) << iter
+                  << "  Time: " << std::fixed << std::setprecision(4) << t
+                  << std::endl;
+      }
+    }
 
     auto u_host =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
