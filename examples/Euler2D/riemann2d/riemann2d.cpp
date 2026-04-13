@@ -103,43 +103,33 @@ int main() {
     Riemann2DInitial<value_type> initial{};
     solver.initialize(initial, sol);
 
-    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
-    TimeIntegrator time_integrator(sol, mesh);
+    using Analyzer = DGSEM::CompositeAnalyzer<
+        MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+    Analyzer analyzer;
 
+    using AnalyzerObserver =
+        DGSEM::AnalyzerObserver<MyBasis, Eq, Solution, Analyzer>;
+
+    using DGSEM::PrintObserver;
+
+    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
+    TimeIntegrator time_integrator(sol, mesh, t_final);
+
+    // CFL, dt 计算
     const value_type cfl = 0.2;
     const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
     const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
     const value_type max_speed = 2.0;
     const value_type dt =
         cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
-    int iter = 0;
-    value_type t = 0.0;
 
-    using Analyzer = DGSEM::CompositeAnalyzer<
-        MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+    // 注册 observer
+    time_integrator.add_observer(
+        std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
+    time_integrator.add_observer(std::make_unique<PrintObserver>(100));
 
-    Analyzer analyzer;
-    while (t < t_final) {
-      time_integrator.step(solver, sol, dt);
-      t += dt;
-      iter++;
-
-      DGSEM::AnalyzerFunctor<MyBasis, Eq, Analyzer, Solution>::apply(
-          analyzer, sol, n_cells);
-
-      if (analyzer.get<DGSEM::DivergenceChecker<value_type, Eq::NVARS>>()
-              .has_nan) {
-        std::cerr << "NaN detected at iter " << iter << ", time " << t
-                  << std::endl;
-        break;
-      }
-
-      if (iter % 100 == 0) {
-        std::cout << "Iter: " << std::setw(5) << iter
-                  << "  Time: " << std::fixed << std::setprecision(4) << t
-                  << std::endl;
-      }
-    }
+    // 用 observer 驱动积分
+    time_integrator.solve(solver, sol, dt);
 
     auto u_host =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);

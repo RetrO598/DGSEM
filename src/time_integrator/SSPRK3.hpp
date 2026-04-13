@@ -146,8 +146,15 @@ template <class T, class Solver, class Mesh, class Solution>
 class SSPRK3 : public TimeIntegrator<T, Solver, Solution> {
 public:
   using Equations = typename Solver::EquationType;
+  using base = TimeIntegrator<T, Solver, Solution>;
+
   explicit SSPRK3(const Solution& sol, const Mesh& mesh_)
-      : tmp1(sol.clone_shape()), tmp2(sol.clone_shape()), mesh(mesh_) {};
+      : base(), tmp1(sol.clone_shape()), tmp2(sol.clone_shape()),
+        mesh(mesh_) {};
+
+  explicit SSPRK3(const Solution& sol, const Mesh& mesh_, T final_time_)
+      : base(final_time_), tmp1(sol.clone_shape()), tmp2(sol.clone_shape()),
+        mesh(mesh_) {};
 
   void step(Solver& solver, Solution& sol, T dt) override {
     solver.calc_rhs(sol, this->time);
