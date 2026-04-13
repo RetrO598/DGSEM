@@ -25,26 +25,48 @@ struct Riemann2DInitial
     T v1;
     T v2;
     T p;
-    if (x >= 0.5 && y >= 0.5) {
-      rho = 0.5313;
+    // if (x >= 0.5 && y >= 0.5) {
+    //   rho = 0.5313;
+    //   v1 = 0.0;
+    //   v2 = 0.0;
+    //   p = 0.4;
+    // } else if (x < 0.5 && y >= 0.5) {
+    //   rho = 1.0;
+    //   v1 = 0.7276;
+    //   v2 = 0.0;
+    //   p = 1.0;
+    // } else if (x < 0.5 && y < 0.5) {
+    //   rho = 0.8;
+    //   v1 = 0.0;
+    //   v2 = 0.0;
+    //   p = 1.0;
+    // } else if (x >= 0.5 && y < 0.5) {
+    //   rho = 1.0;
+    //   v1 = 0.0;
+    //   v2 = 0.7276;
+    //   p = 1.0;
+    // }
+
+    if (x >= 0.8 && y >= 0.8) {
+      rho = 1.5;
       v1 = 0.0;
       v2 = 0.0;
-      p = 0.4;
-    } else if (x < 0.5 && y >= 0.5) {
-      rho = 1.0;
-      v1 = 0.7276;
+      p = 1.5;
+    } else if (x < 0.8 && y >= 0.8) {
+      rho = 0.5323;
+      v1 = 1.206;
       v2 = 0.0;
-      p = 1.0;
-    } else if (x < 0.5 && y < 0.5) {
-      rho = 0.8;
+      p = 0.3;
+    } else if (x < 0.8 && y < 0.8) {
+      rho = 0.138;
+      v1 = 1.206;
+      v2 = 1.206;
+      p = 0.029;
+    } else if (x >= 0.8 && y < 0.8) {
+      rho = 0.5323;
       v1 = 0.0;
-      v2 = 0.0;
-      p = 1.0;
-    } else if (x >= 0.5 && y < 0.5) {
-      rho = 1.0;
-      v1 = 0.0;
-      v2 = 0.7276;
-      p = 1.0;
+      v2 = 1.206;
+      p = 0.3;
     }
 
     return DGSEM::utils::prim_to_cons(std::array<T, 4>{rho, v1, v2, p},
@@ -57,7 +79,7 @@ int main() {
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleEuler2D<value_type>;
-    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 4>;
+    using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, 5>;
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
@@ -75,7 +97,7 @@ int main() {
 
     std::size_t nx = 256;
     std::size_t ny = 256;
-    value_type t_final = 0.25;
+    value_type t_final = 0.8;
     std::string output_path = "riemann2d.txt";
 
     std::array<value_type, 4> domain_mesh = {0.0, 1.0, 0.0, 1.0};

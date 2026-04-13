@@ -5,9 +5,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ========================
 # backend 开关
 # ========================
-option(ENABLE_CUDA "Enable CUDA backend" OFF)
-option(ENABLE_OPENMP "Enable OpenMP backend" ON)
-option(ENABLE_SERIAL "Enable Serial backend" OFF)
+option(ENABLE_CUDA "Enable CUDA backend" ON)
+option(ENABLE_OPENMP "Enable OpenMP backend" OFF)
+option(ENABLE_SERIAL "Enable Serial backend" ON)
 
 if(NOT ENABLE_CUDA AND NOT ENABLE_OPENMP AND NOT ENABLE_SERIAL)
     message(FATAL_ERROR "At least one backend must be enabled!")
