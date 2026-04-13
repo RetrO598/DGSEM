@@ -5,9 +5,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ========================
 # backend 开关
 # ========================
-option(ENABLE_CUDA "Enable CUDA backend" ON)
-option(ENABLE_OPENMP "Enable OpenMP backend" OFF)
-option(ENABLE_SERIAL "Enable Serial backend" ON)
+option(ENABLE_CUDA "Enable CUDA backend" OFF)
+option(ENABLE_OPENMP "Enable OpenMP backend" ON)
+option(ENABLE_SERIAL "Enable Serial backend" OFF)
 
 if(NOT ENABLE_CUDA AND NOT ENABLE_OPENMP AND NOT ENABLE_SERIAL)
     message(FATAL_ERROR "At least one backend must be enabled!")
@@ -75,20 +75,26 @@ message(STATUS "  OpenMP : ${ENABLE_OPENMP}")
 message(STATUS "  Serial : ${ENABLE_SERIAL}")
 
 # ========================
+# VTK
+# ========================
+find_package(VTK REQUIRED COMPONENTS CommonCore CommonDataModel IOXML FiltersCore)
+
+# ========================
 # dgsem
 # ========================
 add_library(dgsem INTERFACE)
 
 target_include_directories(dgsem
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
+        INTERFACE
+                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
 
 target_link_libraries(dgsem INTERFACE Kokkos::kokkos)
+target_link_libraries(dgsem INTERFACE ${VTK_LIBRARIES})
 
 if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
-  add_compile_options(
-    --expt-relaxed-constexpr
-    --expt-extended-lambda)
+    add_compile_options(
+        --expt-relaxed-constexpr
+        --expt-extended-lambda)
 endif()
 
 add_subdirectory(examples)

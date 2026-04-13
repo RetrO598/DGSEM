@@ -131,8 +131,11 @@ int main() {
 
     using AnalyzerObserver =
         DGSEM::AnalyzerObserver<MyBasis, Eq, Solution, Analyzer>;
-
     using DGSEM::PrintObserver;
+
+    using VTUOutputObserver =
+        DGSEM::VTUOutputObserver<value_type, MyBasis, Solution,
+                                 decltype(container.node_coordinates), Eq>;
 
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     TimeIntegrator time_integrator(sol, mesh, t_final);
@@ -149,6 +152,8 @@ int main() {
     time_integrator.add_observer(
         std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
     time_integrator.add_observer(std::make_unique<PrintObserver>(100));
+    time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
+        "riemann2d_output", 500, sol, container.node_coordinates, n_cells));
 
     // 用 observer 驱动积分
     time_integrator.solve(solver, sol, dt);
