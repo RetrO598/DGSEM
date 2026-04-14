@@ -4,11 +4,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <dgsem.hpp>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
 #include <numbers>
-#include <string>
 
 template <class T>
 KOKKOS_INLINE_FUNCTION std::array<T, 4>
@@ -100,15 +96,12 @@ int main(int argc, char* argv[]) {
     std::size_t nx = 480;
     std::size_t ny = 120;
     value_type t_final = 0.2;
-    std::string output_path = "double_mach_reflection_structured.txt";
     if (argc > 1)
       nx = static_cast<std::size_t>(std::strtoull(argv[1], nullptr, 10));
     if (argc > 2)
       ny = static_cast<std::size_t>(std::strtoull(argv[2], nullptr, 10));
     if (argc > 3)
       t_final = std::strtod(argv[3], nullptr);
-    if (argc > 4)
-      output_path = argv[4];
 
     std::array<value_type, 4> domain_mesh = {0.0, 4.0, 0.0, 1.0};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
@@ -135,53 +128,34 @@ int main(int argc, char* argv[]) {
     DoubleMachReflectionInitial<value_type> initial{gamma};
     solver.initialize(initial, sol);
 
+    using Analyzer = DGSEM::CompositeAnalyzer<
+        MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+    Analyzer analyzer;
+
+    using AnalyzerObserver =
+        DGSEM::AnalyzerObserver<MyBasis, Eq, Solution, Analyzer>;
+    using DGSEM::PrintObserver;
+    using VTUOutputObserver =
+        DGSEM::VTUOutputObserver<value_type, MyBasis, Solution,
+                                 decltype(container.node_coordinates), Eq>;
+
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
-    TimeIntegrator time_integrator(sol, mesh);
+    TimeIntegrator time_integrator(sol, mesh, t_final);
 
     const value_type cfl = 0.2;
     const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
     const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
     const value_type max_speed = 12.0;
+    const value_type dt =
+        cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
 
-    int iter = 0;
-    value_type t = 0.0;
-    while (t < t_final) {
-      const value_type dt =
-          cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
-      const value_type dt_step = std::min(dt, t_final - t);
-      time_integrator.step(solver, sol, dt_step);
-      t += dt_step;
-      ++iter;
-
-      if (iter % 50 == 0) {
-        std::cout << "Iter: " << std::setw(6) << iter
-                  << "  Time: " << std::fixed << std::setprecision(6) << t
-                  << std::endl;
-      }
-    }
-
-    auto u_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
-    auto coord_host = container.node_coordinates;
-
-    std::ofstream solution_file(output_path, std::ios::out);
-    solution_file << std::scientific << std::setprecision(16);
-    const std::size_t ndofs = MyBasis::NNodes * MyBasis::NNodes;
-
-    for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
-      for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
-        for (std::size_t dof = 0; dof < ndofs; ++dof) {
-          const std::array<value_type, 4> u_cons = {
-              u_host(ielem, jelem, dof, 0), u_host(ielem, jelem, dof, 1),
-              u_host(ielem, jelem, dof, 2), u_host(ielem, jelem, dof, 3)};
-          const auto u_prim = DGSEM::utils::cons_to_prim(u_cons, eq);
-          solution_file << coord_host(ielem, jelem, dof, 0) << " "
-                        << coord_host(ielem, jelem, dof, 1) << " " << u_prim[0]
-                        << " " << u_prim[1] << " " << u_prim[2] << " "
-                        << u_prim[3] << "\n";
-        }
-      }
-    }
+    time_integrator.add_observer(
+        std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
+    time_integrator.add_observer(std::make_unique<PrintObserver>(500));
+    time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
+        "double_mach_reflection_structured_output", sol,
+        container.node_coordinates, n_cells));
+    time_integrator.solve(solver, sol, dt);
 
     MyBasis::finalize();
   }

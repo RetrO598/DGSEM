@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include <observer/observer.hpp>
+#include <observer/observer_base.hpp>
 
 namespace DGSEM {
 

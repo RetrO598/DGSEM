@@ -1,13 +1,12 @@
 #pragma once
 
-#include "Kokkos_Core.hpp"
-#include "equations/compressible_euler2D.hpp"
+#include <Kokkos_Core.hpp>
 #include <array>
-#include <string>
-#include <vector>
-
+#include <equations/equations.hpp>
 #include <observer/observer_base.hpp>
 #include <observer/vtu_output_observer_impl.hpp>
+#include <string>
+#include <vector>
 
 namespace DGSEM {
 
@@ -27,13 +26,17 @@ public:
   static constexpr int N = NNodes - 1;
   static constexpr int NVARS = Eq::NVARS;
 
-  VTUOutputObserver(const std::string& output_path_, int output_interval_,
-                    const Solution& sol_, const Coord& coord_,
-                    const std::array<std::size_t, NDIMS>& n_elems_)
+  VTUOutputObserver(const std::string& output_path_, const Solution& sol_,
+                    const Coord& coord_,
+                    const std::array<std::size_t, NDIMS>& n_elems_,
+                    int output_interval_ = -1)
       : output_path(output_path_), output_interval(output_interval_), sol(sol_),
         coord(coord_), n_elems(n_elems_) {}
 
   void on_step(int step, double time, bool&) override {
+    if (output_interval <= 0) {
+      return;
+    }
     if (step % output_interval == 0) {
       write_vtu(make_filename(step, time));
       last_written_step = step;
@@ -107,7 +110,7 @@ private:
   const Coord& coord;
 
   std::string output_path;
-  int output_interval;
+  int output_interval = -1;
   int last_written_step = -1;
 
   const std::array<std::size_t, NDIMS>& n_elems;

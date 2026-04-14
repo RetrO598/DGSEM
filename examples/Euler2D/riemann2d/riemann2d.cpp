@@ -1,12 +1,7 @@
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <cstddef>
-#include <cstdlib>
 #include <dgsem.hpp>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <string>
 
 template <class T>
 struct Riemann2DInitial
@@ -98,7 +93,6 @@ int main() {
     std::size_t nx = 256;
     std::size_t ny = 256;
     value_type t_final = 0.8;
-    std::string output_path = "riemann2d.txt";
 
     std::array<value_type, 4> domain_mesh = {0.0, 1.0, 0.0, 1.0};
     std::array<std::array<value_type, 2>, 2> mapping_domain = {
@@ -153,33 +147,10 @@ int main() {
         std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
     time_integrator.add_observer(std::make_unique<PrintObserver>(100));
     time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
-        "riemann2d_output", 500, sol, container.node_coordinates, n_cells));
+        "riemann2d_output", sol, container.node_coordinates, n_cells, 1000));
 
     // 用 observer 驱动积分
     time_integrator.solve(solver, sol, dt);
-
-    auto u_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
-    auto coord_host = container.node_coordinates;
-
-    std::ofstream solution_file(output_path, std::ios::out);
-    solution_file << std::scientific << std::setprecision(16);
-    const std::size_t ndofs = MyBasis::NNodes * MyBasis::NNodes;
-
-    for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
-      for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
-        for (std::size_t dof = 0; dof < ndofs; ++dof) {
-          const std::array<value_type, 4> u_cons = {
-              u_host(ielem, jelem, dof, 0), u_host(ielem, jelem, dof, 1),
-              u_host(ielem, jelem, dof, 2), u_host(ielem, jelem, dof, 3)};
-          const auto u_prim = DGSEM::utils::cons_to_prim(u_cons, eq);
-          solution_file << coord_host(ielem, jelem, dof, 0) << " "
-                        << coord_host(ielem, jelem, dof, 1) << " " << u_prim[0]
-                        << " " << u_prim[1] << " " << u_prim[2] << " "
-                        << u_prim[3] << "\n";
-        }
-      }
-    }
 
     MyBasis::finalize();
   }
