@@ -178,8 +178,6 @@ public:
                                    static_cast<T>(2.0 / 3.0),
                                    static_cast<T>(2.0 / 3.0) * dt,
                                    solver.get_ndofs(), mesh.get_num_cells());
-
-    this->time += dt;
   }
 
 private:

@@ -48,8 +48,7 @@ public:
 
 private:
   std::string make_filename(int step, double time) const {
-    return output_path + "_step" + std::to_string(step) + "_t" +
-           std::to_string(time) + ".vtu";
+    return output_path + "_step" + std::to_string(step) + ".vtu";
   }
 
   void write_vtu(const std::string& filename) const {
@@ -74,8 +73,6 @@ private:
     // ----------------------------
     std::vector<double> points(3 * total_points);
     std::vector<double> values(NVARS * total_points);
-
-    std::size_t gid = 0;
 
     for (std::size_t je = 0; je < ny; ++je)
       for (std::size_t ie = 0; ie < nx; ++ie) {
