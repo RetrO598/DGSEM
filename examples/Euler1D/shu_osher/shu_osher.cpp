@@ -34,37 +34,35 @@ int main() {
         u = 0.0;
         p = 1.0;
       }
-      return DGSEM::utils::prim_to_cons(std::array<double, 3>{rho, u, p},
-                                        1.4);
+      return DGSEM::utils::prim_to_cons(std::array<double, 3>{rho, u, p}, 1.4);
     };
 
     auto boundaries = DGSEM::BoundarySet(
         DGSEM::DirichletBC(DGSEM::utils::prim_to_cons(
             std::array<double, 3>{3.857, 2.629, 10.333}, 1.4)),
         DGSEM::DirichletBC(DGSEM::utils::prim_to_cons(
-            std::array<double, 3>{1.0 + 0.2 * std::sin(25.0), 0.0, 1.0},
-            1.4)));
+            std::array<double, 3>{1.0 + 0.2 * std::sin(25.0), 0.0, 1.0}, 1.4)));
 
     using Mesh = DGSEM::StructuredMesh<double, 1>;
     using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
                                            Mesh, decltype(boundaries)>;
     using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-    std::array<double, 2> domain_mesh = {-5.0, 5.0};
+    double domain_left = -5.0;
+    double domain_right = 5.0;
     std::array<std::size_t, 1> n_cells = {1024};
     // std::array<DGSEM::BoundaryCondition, 2> bcs = {
     //     DGSEM::BoundaryCondition::Extrapolate,
     //     DGSEM::BoundaryCondition::Extrapolate};
 
-    Mesh mesh(domain_mesh, n_cells);
+    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq(1.4);
 
     DGSEM::StructuredElementContainer<double, 1> container;
     DGSEM::StructuredElementInitializer<double, MyBasis,
                                         DGSEM::LinearMapping<double>, 1>
-        initializer{
-            DGSEM::LinearMapping<double>(domain_mesh[0], domain_mesh[1]),
-            {false}};
+        initializer{DGSEM::LinearMapping<double>(domain_left, domain_right),
+                    {false}};
 
     initializer.init_elements(n_cells, container);
 
@@ -84,7 +82,7 @@ int main() {
     TimeIntegrator time_integrator(sol, mesh);
     const double t_final = 1.8;
     const double cfl = 0.1;
-    const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
+    const double dx = (domain_right - domain_left) / n_cells[0];
     const double dt = cfl * dx / 4.566;
     double t = 0.0;
     int iter = 0;

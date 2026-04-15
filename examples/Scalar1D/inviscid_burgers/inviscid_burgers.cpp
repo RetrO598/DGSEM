@@ -38,21 +38,23 @@ int main() {
                                            Mesh, decltype(boundaries)>;
     using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-    std::array<double, 2> domain_mesh = {0.0, 1.0};
+    // std::array<double, 2> domain_mesh = {0.0, 1.0};
+    std::array<double, 1> domain_left = {0.0};
+    std::array<double, 1> domain_right = {1.0};
     std::array<std::size_t, 1> n_cells = {64};
     // std::array<DGSEM::BoundaryCondition, 2> bcs = {
     //     DGSEM::BoundaryCondition::Extrapolate,
     //     DGSEM::BoundaryCondition::Extrapolate};
 
-    Mesh mesh(domain_mesh, n_cells);
+    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq{};
 
     DGSEM::StructuredElementContainer<double, 1> container;
     DGSEM::StructuredElementInitializer<double, MyBasis,
                                         DGSEM::LinearMapping<double>, 1>
         initializer{
-            DGSEM::LinearMapping<double>(domain_mesh[0], domain_mesh[1]),
-            {false}};
+            DGSEM::LinearMapping<double>(domain_left[0], domain_right[0]),
+            {true}};
 
     initializer.init_elements(n_cells, container);
 
@@ -72,7 +74,7 @@ int main() {
     TimeIntegrator time_integrator(sol, mesh);
     const double t_final = 2.0;
     const double cfl = 0.1;
-    const double dx = (domain_mesh[1] - domain_mesh[0]) / n_cells[0];
+    const double dx = (domain_right[0] - domain_left[0]) / n_cells[0];
     const double dt = cfl * dx / 1.0;
     double t = 0.0;
     int iter = 0;

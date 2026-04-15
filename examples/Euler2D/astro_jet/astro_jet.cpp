@@ -72,20 +72,19 @@ int main() {
     std::size_t ny = 256;
     value_type t_final = 0.001;
 
-    std::array<value_type, 4> domain_mesh = {-0.5, 0.5, -0.5, 0.5};
-    std::array<std::array<value_type, 2>, 2> mapping_domain = {
-        std::array<value_type, 2>{-0.5, -0.5},
-        std::array<value_type, 2>{0.5, 0.5}};
+    std::array<value_type, 2> domain_left = {-0.5, -0.5};
+    std::array<value_type, 2> domain_right = {0.5, 0.5};
+
     std::array<std::size_t, 2> n_cells = {nx, ny};
 
-    Mesh mesh(domain_mesh, n_cells);
+    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq{1.4};
 
     DGSEM::StructuredElementContainer<value_type, 2> container;
     DGSEM::StructuredElementInitializer<
         value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 2>>, 2>
         initializer{DGSEM::LinearMapping<std::array<value_type, 2>>(
-                        mapping_domain[0], mapping_domain[1]),
+                        domain_left, domain_right),
                     {false, true}};
 
     initializer.init_elements(n_cells, container);
@@ -111,8 +110,8 @@ int main() {
     TimeIntegrator time_integrator(sol, mesh, t_final);
 
     const value_type cfl = 0.1;
-    const value_type dx = (domain_mesh[1] - domain_mesh[0]) / nx;
-    const value_type dy = (domain_mesh[3] - domain_mesh[2]) / ny;
+    const value_type dx = (domain_right[0] - domain_left[0]) / nx;
+    const value_type dy = (domain_right[1] - domain_left[1]) / ny;
     const value_type max_speed = 800.0;
     // const value_type dt =
     //     cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
