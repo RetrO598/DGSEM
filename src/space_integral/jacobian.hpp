@@ -50,6 +50,18 @@ struct JacobianProjFunctor {
                          functor);
   }
 
+  static void apply(DataArray du_, ScalarArray inverse_jacobian_,
+                    std::array<std::size_t, NDIMS> n_elems_)
+    requires(NDIMS == 3)
+  {
+    JacobianProjFunctor functor(du_, inverse_jacobian_);
+    Kokkos::parallel_for("jacobian_proj",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                             {0, 0, 0},
+                             {n_elems_[0], n_elems_[1], n_elems_[2]}),
+                         functor);
+  }
+
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const
     requires(NDIMS == 1)
   {
@@ -70,6 +82,21 @@ struct JacobianProjFunctor {
       const T factor = -inverse_jacobian(ielem, jelem, dof);
       for (std::size_t var = 0; var < NVARS; ++var) {
         du(ielem, jelem, dof, var) *= factor;
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem,
+                                         const std::size_t& kelem) const
+    requires(NDIMS == 3)
+  {
+    constexpr std::size_t ndofs =
+        Basis::NNodes * Basis::NNodes * Basis::NNodes;
+    for (std::size_t dof = 0; dof < ndofs; ++dof) {
+      const T factor = -inverse_jacobian(ielem, jelem, kelem, dof);
+      for (std::size_t var = 0; var < NVARS; ++var) {
+        du(ielem, jelem, kelem, dof, var) *= factor;
       }
     }
   }

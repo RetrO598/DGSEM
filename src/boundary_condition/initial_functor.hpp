@@ -44,6 +44,21 @@ struct InitialFunctor {
                          functor);
   }
 
+  static void apply(DataArray u_, CoordArray node_coords_, Functor initial_,
+                    std::array<std::size_t, NDIMS> n_elems_,
+                    std::size_t n_dofs_, std::size_t NVARS_)
+    requires(NDIMS == 3)
+  {
+    InitialFunctor<T, Functor, NDIMS> functor(u_, node_coords_, initial_,
+                                              n_elems_, n_dofs_, NVARS_);
+
+    Kokkos::parallel_for(
+        "initialize_elements",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
   KOKKOS_INLINE_FUNCTION void operator()(const int& elem) const
     requires(NDIMS == 1)
   {
@@ -75,6 +90,24 @@ struct InitialFunctor {
 
       for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
         u(ielem, jelem, inode, ivar) = init_value[ivar];
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const int& ielem, const int& jelem,
+                                         const int& kelem) const
+    requires(NDIMS == 3)
+  {
+    std::array<T, NDIMS> coord;
+    for (std::size_t inode = 0; inode < n_dofs; ++inode) {
+      for (std::size_t idim = 0; idim < NDIMS; ++idim) {
+        coord[idim] = node_coords(ielem, jelem, kelem, inode, idim);
+      }
+
+      auto init_value = initial.get_initial(coord);
+
+      for (std::size_t ivar = 0; ivar < NVARS; ++ivar) {
+        u(ielem, jelem, kelem, inode, ivar) = init_value[ivar];
       }
     }
   }

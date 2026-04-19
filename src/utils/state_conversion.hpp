@@ -22,9 +22,8 @@ prim_to_cons_impl(const std::array<T, NDIMS + 2>& prim, T gamma) {
     velocity_sq += velocity * velocity;
   }
 
-  cons[NDIMS + 1] =
-      prim[NDIMS + 1] / (gamma - static_cast<T>(1)) +
-      static_cast<T>(0.5) * prim[0] * velocity_sq;
+  cons[NDIMS + 1] = prim[NDIMS + 1] / (gamma - static_cast<T>(1)) +
+                    static_cast<T>(0.5) * prim[0] * velocity_sq;
   return cons;
 }
 

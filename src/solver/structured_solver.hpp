@@ -95,7 +95,7 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_volume_integral(solution& sol) {
-  if constexpr (NDIMS == 2) {
+  if constexpr (NDIMS >= 2) {
     VolumeFlux volume_integral(element.contravariant_vectors_device);
     VolumeIntegralFunctor<value_type, Equations, Basis, VolumeFlux,
                           NDIMS>::apply(sol.u_device, sol.du_device, eq,
@@ -115,7 +115,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_volume_integral(solution& sol)
   requires std::derived_from<VolumeFlux, VolumeIntegralShockCapturingBase>
 {
-  if constexpr (NDIMS == 2) {
+  if constexpr (NDIMS >= 2) {
     VolumeFlux volume_integral(alpha_max, alpha_min, alpha_smooth, n_cells,
                                element.contravariant_vectors_device,
                                element.subcell_normals.device_data());

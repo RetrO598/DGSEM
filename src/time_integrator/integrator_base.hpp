@@ -20,13 +20,14 @@ public:
 
   void solve(Solver& solver, Solution& sol, T dt) {
     while (time < final_time) {
-      step(solver, sol, dt);
-      time += dt;
-      iter++;
 
       for (auto& obs : observers) {
         obs->on_step(iter, time, has_nan);
       }
+
+      step(solver, sol, dt);
+      time += dt;
+      iter++;
 
       if (has_nan) {
         break;

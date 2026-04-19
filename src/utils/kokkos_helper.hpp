@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Kokkos_Core.hpp"
 #include <base/base.hpp>
 
 namespace DGSEM {
@@ -15,6 +16,9 @@ void clone_view_shape(ViewType& dst, const ViewType& src) {
   } else if constexpr (ViewType::rank == 4) {
     Kokkos::realloc(dst, src.extent(0), src.extent(1), src.extent(2),
                     src.extent(3));
+  } else if constexpr (ViewType::rank == 5) {
+    Kokkos::realloc(dst, src.extent(0), src.extent(1), src.extent(2),
+                    src.extent(3), src.extent(4));
   } else {
     static_assert(ViewType::rank <= 4, "Unsupported rank");
   }

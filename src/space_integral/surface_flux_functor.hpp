@@ -62,6 +62,21 @@ struct InterfaceFluxFunctor {
                          functor);
   }
 
+  static void
+  apply(IndexArray left_neighbors_, MetricArray contravariant_vectors_,
+        ScalarArray inverse_jacobian_, const Equations& eq_, DataArray u_,
+        DataArray surface_flux_, std::array<std::size_t, NDIMS> n_elems_)
+    requires(NDIMS == 3)
+  {
+    InterfaceFluxFunctor functor(left_neighbors_, contravariant_vectors_,
+                                 inverse_jacobian_, eq_, u_, surface_flux_);
+    Kokkos::parallel_for("interface_flux",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                             {0, 0, 0},
+                             {n_elems_[0], n_elems_[1], n_elems_[2]}),
+                         functor);
+  }
+
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const
     requires(NDIMS == 1)
   {
@@ -75,6 +90,16 @@ struct InterfaceFluxFunctor {
     InterfaceHelper::interface_flux(left_neighbors, contravariant_vectors,
                                     inverse_jacobian, eq, ielem, jelem, u,
                                     surface_flux);
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem,
+                                         const std::size_t& kelem) const
+    requires(NDIMS == 3)
+  {
+    InterfaceHelper::interface_flux(left_neighbors, contravariant_vectors,
+                                    inverse_jacobian, eq, ielem, jelem, kelem,
+                                    u, surface_flux);
   }
 
   IndexArray left_neighbors;

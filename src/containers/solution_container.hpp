@@ -66,6 +66,36 @@ struct SolutionInitializer<T, NVARS, 2> {
     Kokkos::deep_copy(surface_device, T{0.0});
   }
 };
+
+template <class T, std::size_t NVARS>
+struct SolutionInitializer<T, NVARS, 3> {
+  using DataArray = solution_type_traits<T, 3>::DataArray;
+  using DataArrayHost = solution_type_traits<T, 3>::DataArrayHost;
+
+  inline constexpr static void
+  initialize_u(const std::array<std::size_t, 3>& n_cells, std::size_t ndofs,
+               DataArray& u_device) {
+    Kokkos::realloc(u_device, n_cells[0], n_cells[1], n_cells[2], ndofs,
+                    NVARS);
+    Kokkos::deep_copy(u_device, T{0.0});
+  }
+
+  inline constexpr static void
+  initialize_du(const std::array<std::size_t, 3>& n_cells, std::size_t ndofs,
+                DataArray& du_device) {
+    Kokkos::realloc(du_device, n_cells[0], n_cells[1], n_cells[2], ndofs,
+                    NVARS);
+    Kokkos::deep_copy(du_device, T{0.0});
+  }
+
+  inline constexpr static void
+  initialize_surface_flux_value(const std::array<std::size_t, 3>& n_cells,
+                                std::size_t nnodes, DataArray& surface_device) {
+    Kokkos::realloc(surface_device, n_cells[0], n_cells[1], n_cells[2],
+                    6 * nnodes * nnodes, NVARS);
+    Kokkos::deep_copy(surface_device, T{0.0});
+  }
+};
 } // namespace detail
 
 template <class Mesh, class Basis, class Equations>
@@ -81,7 +111,10 @@ struct Solution {
   Solution(const Mesh& mesh) {
     auto n_cells = mesh.get_num_cells();
     constexpr std::size_t ndofs =
-        (NDIMS == 1) ? Basis::NNodes : Basis::NNodes * Basis::NNodes;
+        (NDIMS == 1)
+            ? Basis::NNodes
+            : ((NDIMS == 2) ? Basis::NNodes * Basis::NNodes
+                            : Basis::NNodes * Basis::NNodes * Basis::NNodes);
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_u(
         n_cells, ndofs, u_device);
 

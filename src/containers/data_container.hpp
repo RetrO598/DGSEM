@@ -125,10 +125,9 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 1> {
     }
   }
 
-  inline constexpr static void
-  calc_contravariant_vectors(const std::array<std::size_t, 1>& n_cells,
-                             MatrixHost& contravariant,
-                             const MatrixHost& jacobian) {}
+  inline constexpr static void calc_contravariant_vectors(
+      const std::array<std::size_t, 1>& n_cells, MatrixHost& contravariant,
+      const MatrixHost& jacobian, const CoordArrayHost& coordinates) {}
 
   inline constexpr static void
   calc_inverse_jacobian(const std::array<std::size_t, 1>& n_cells,
@@ -268,10 +267,9 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
     }
   }
 
-  inline constexpr static void
-  calc_contravariant_vectors(const std::array<std::size_t, 2>& n_cells,
-                             MatrixHost& contravariant,
-                             const MatrixHost& jacobian) {
+  inline constexpr static void calc_contravariant_vectors(
+      const std::array<std::size_t, 2>& n_cells, MatrixHost& contravariant,
+      const MatrixHost& jacobian, const CoordArrayHost& coordinates) {
     for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
       for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
         for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
@@ -332,6 +330,400 @@ struct StructuredContainerInitializer<T, Basis, Mapping, 2> {
     }
   }
 };
+
+template <class T, class Basis, class Mapping>
+struct StructuredContainerInitializer<T, Basis, Mapping, 3> {
+  using CoordArrayHost = coordinate_type_traits<T, 3>::CoordArrayHost;
+  using ScalarArrayHost = scalar_node_type_traits<T, 3>::ScalarArrayHost;
+  using IndexArrayHost = index_type_traits<3>::IndexArrayHost;
+  using MatrixHost = jacobian_type_traits<T, 3>::JacobianMatrixHost;
+
+  inline constexpr static std::size_t ndofs() {
+    return Basis::NNodes * Basis::NNodes * Basis::NNodes;
+  }
+
+  inline constexpr static void
+  resize(const std::array<std::size_t, 3>& n_cells,
+         StructuredElementContainer<T, 3>& container) {
+    Kokkos::realloc(container.node_coordinates_device, n_cells[0], n_cells[1],
+                    n_cells[2], ndofs(), 3);
+    Kokkos::realloc(container.left_neighbors_device, n_cells[0], n_cells[1],
+                    n_cells[2], 3, 3);
+    Kokkos::realloc(container.jacobian_matrix_device, n_cells[0], n_cells[1],
+                    n_cells[2], ndofs(), 3, 3);
+    Kokkos::realloc(container.contravariant_vectors_device, n_cells[0],
+                    n_cells[1], n_cells[2], ndofs(), 3, 3);
+    Kokkos::realloc(container.inverse_jacobian_device, n_cells[0], n_cells[1],
+                    n_cells[2], ndofs());
+
+    Kokkos::realloc(container.node_coordinates, n_cells[0], n_cells[1],
+                    n_cells[2], ndofs(), 3);
+    Kokkos::realloc(container.left_neighbors, n_cells[0], n_cells[1],
+                    n_cells[2], 3, 3);
+    Kokkos::realloc(container.jacobian_matrix, n_cells[0], n_cells[1],
+                    n_cells[2], ndofs(), 3, 3);
+    Kokkos::realloc(container.contravariant_vectors, n_cells[0], n_cells[1],
+                    n_cells[2], ndofs(), 3, 3);
+    Kokkos::realloc(container.inverse_jacobian, n_cells[0], n_cells[1],
+                    n_cells[2], ndofs());
+    container.subcell_normals.allocate(n_cells, Basis::NNodes);
+  }
+
+  inline constexpr static void
+  calc_node_coordinates(const std::array<std::size_t, 3>& n_cells,
+                        CoordArrayHost& coordinates, const Mapping& mapping) {
+    const T dx = static_cast<T>(2.0) / static_cast<T>(n_cells[0]);
+    const T dy = static_cast<T>(2.0) / static_cast<T>(n_cells[1]);
+    const T dz = static_cast<T>(2.0) / static_cast<T>(n_cells[2]);
+
+    for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
+      const T cell_x_offset = static_cast<T>(-1.0) +
+                              static_cast<T>(ielem) * dx +
+                              static_cast<T>(0.5) * dx;
+      for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
+        const T cell_y_offset = static_cast<T>(-1.0) +
+                                static_cast<T>(jelem) * dy +
+                                static_cast<T>(0.5) * dy;
+        for (std::size_t kelem = 0; kelem < n_cells[2]; ++kelem) {
+          const T cell_z_offset = static_cast<T>(-1.0) +
+                                  static_cast<T>(kelem) * dz +
+                                  static_cast<T>(0.5) * dz;
+          for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+            for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+              for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+                const std::size_t dof =
+                    DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode, knode);
+                const std::array<T, 3> ref_coord{
+                    cell_x_offset +
+                        static_cast<T>(0.5) * dx * Basis::nodes_host[inode],
+                    cell_y_offset +
+                        static_cast<T>(0.5) * dy * Basis::nodes_host[jnode],
+                    cell_z_offset +
+                        static_cast<T>(0.5) * dz * Basis::nodes_host[knode]};
+                const auto phys_coord = mapping.eval(ref_coord);
+                coordinates(ielem, jelem, kelem, dof, 0) = phys_coord[0];
+                coordinates(ielem, jelem, kelem, dof, 1) = phys_coord[1];
+                coordinates(ielem, jelem, kelem, dof, 2) = phys_coord[2];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  inline constexpr static void
+  calc_jacobian_matrix(const std::array<std::size_t, 3>& n_cells,
+                       MatrixHost& jacobian,
+                       const CoordArrayHost& coordinates) {
+    for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
+      for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
+        for (std::size_t kelem = 0; kelem < n_cells[2]; ++kelem) {
+          for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+            for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+              for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+                const std::size_t dof =
+                    DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode, knode);
+
+                T dx_dxi = T{};
+                T dy_dxi = T{};
+                T dz_dxi = T{};
+                T dx_deta = T{};
+                T dy_deta = T{};
+                T dz_deta = T{};
+                T dx_dzeta = T{};
+                T dy_dzeta = T{};
+                T dz_dzeta = T{};
+
+                for (std::size_t m = 0; m < Basis::NNodes; ++m) {
+                  const std::size_t dof_x =
+                      DGSEM::utils::local_dof<Basis::NNodes>(m, jnode, knode);
+                  const std::size_t dof_y =
+                      DGSEM::utils::local_dof<Basis::NNodes>(inode, m, knode);
+                  const std::size_t dof_z =
+                      DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode, m);
+
+                  dx_dxi += Basis::derivative_host(inode, m) *
+                            coordinates(ielem, jelem, kelem, dof_x, 0);
+                  dy_dxi += Basis::derivative_host(inode, m) *
+                            coordinates(ielem, jelem, kelem, dof_x, 1);
+                  dz_dxi += Basis::derivative_host(inode, m) *
+                            coordinates(ielem, jelem, kelem, dof_x, 2);
+
+                  dx_deta += Basis::derivative_host(jnode, m) *
+                             coordinates(ielem, jelem, kelem, dof_y, 0);
+                  dy_deta += Basis::derivative_host(jnode, m) *
+                             coordinates(ielem, jelem, kelem, dof_y, 1);
+                  dz_deta += Basis::derivative_host(jnode, m) *
+                             coordinates(ielem, jelem, kelem, dof_y, 2);
+
+                  dx_dzeta += Basis::derivative_host(knode, m) *
+                              coordinates(ielem, jelem, kelem, dof_z, 0);
+                  dy_dzeta += Basis::derivative_host(knode, m) *
+                              coordinates(ielem, jelem, kelem, dof_z, 1);
+                  dz_dzeta += Basis::derivative_host(knode, m) *
+                              coordinates(ielem, jelem, kelem, dof_z, 2);
+                }
+
+                jacobian(ielem, jelem, kelem, dof, 0, 0) = dx_dxi;
+                jacobian(ielem, jelem, kelem, dof, 0, 1) = dy_dxi;
+                jacobian(ielem, jelem, kelem, dof, 0, 2) = dz_dxi;
+                jacobian(ielem, jelem, kelem, dof, 1, 0) = dx_deta;
+                jacobian(ielem, jelem, kelem, dof, 1, 1) = dy_deta;
+                jacobian(ielem, jelem, kelem, dof, 1, 2) = dz_deta;
+                jacobian(ielem, jelem, kelem, dof, 2, 0) = dx_dzeta;
+                jacobian(ielem, jelem, kelem, dof, 2, 1) = dy_dzeta;
+                jacobian(ielem, jelem, kelem, dof, 2, 2) = dz_dzeta;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  inline constexpr static void calc_contravariant_vectors(
+      const std::array<std::size_t, 3>& n_cells, MatrixHost& contravariant,
+      const MatrixHost& jacobian, const CoordArrayHost& coordinates) {
+
+    for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
+      for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
+        for (std::size_t kelem = 0; kelem < n_cells[2]; ++kelem) {
+
+          for (std::size_t n = 0; n < 3; ++n) {
+
+            const std::size_t m = (n + 1) % 3;
+            const std::size_t l = (n + 2) % 3;
+
+            // =========================================================
+            // Ja^1_n  (ξ-direction)
+            // =========================================================
+
+            for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+              for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+                for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+
+                  const std::size_t dof =
+                      DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode,
+                                                             knode);
+
+                  T result = 0.0;
+
+                  // -------------------------
+                  // (A)_η term
+                  // -------------------------
+                  for (std::size_t ii = 0; ii < Basis::NNodes; ++ii) {
+
+                    const std::size_t dof_eta =
+                        DGSEM::utils::local_dof<Basis::NNodes>(inode, ii,
+                                                               knode);
+
+                    result +=
+                        0.5 * Basis::derivative_host(jnode, ii) *
+                        (coordinates(ielem, jelem, kelem, dof_eta, m) *
+                             jacobian(ielem, jelem, kelem, dof_eta, 2, l) -
+                         coordinates(ielem, jelem, kelem, dof_eta, l) *
+                             jacobian(ielem, jelem, kelem, dof_eta, 2, m));
+                  }
+
+                  // -------------------------
+                  // (B)_ζ term
+                  // -------------------------
+                  for (std::size_t ii = 0; ii < Basis::NNodes; ++ii) {
+
+                    const std::size_t dof_zeta =
+                        DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode,
+                                                               ii);
+
+                    result -=
+                        0.5 * Basis::derivative_host(knode, ii) *
+                        (coordinates(ielem, jelem, kelem, dof_zeta, m) *
+                             jacobian(ielem, jelem, kelem, dof_zeta, 1, l) -
+                         coordinates(ielem, jelem, kelem, dof_zeta, l) *
+                             jacobian(ielem, jelem, kelem, dof_zeta, 1, m));
+                  }
+
+                  contravariant(ielem, jelem, kelem, dof, 0, n) = result;
+                }
+              }
+            }
+
+            // =========================================================
+            // Ja^2_n  (η-direction)
+            // =========================================================
+
+            for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+              for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+                for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+
+                  const std::size_t dof =
+                      DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode,
+                                                             knode);
+
+                  T result = 0.0;
+
+                  // -------------------------
+                  // (A)_ζ term
+                  // -------------------------
+                  for (std::size_t ii = 0; ii < Basis::NNodes; ++ii) {
+
+                    const std::size_t dof_zeta =
+                        DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode,
+                                                               ii);
+
+                    result +=
+                        0.5 * Basis::derivative_host(knode, ii) *
+                        (coordinates(ielem, jelem, kelem, dof_zeta, m) *
+                             jacobian(ielem, jelem, kelem, dof_zeta, 0, l) -
+                         coordinates(ielem, jelem, kelem, dof_zeta, l) *
+                             jacobian(ielem, jelem, kelem, dof_zeta, 0, m));
+                  }
+
+                  // -------------------------
+                  // (B)_ξ term
+                  // -------------------------
+                  for (std::size_t ii = 0; ii < Basis::NNodes; ++ii) {
+
+                    const std::size_t dof_xi =
+                        DGSEM::utils::local_dof<Basis::NNodes>(ii, jnode,
+                                                               knode);
+
+                    result -= 0.5 * Basis::derivative_host(inode, ii) *
+                              (coordinates(ielem, jelem, kelem, dof_xi, m) *
+                                   jacobian(ielem, jelem, kelem, dof_xi, 2, l) -
+                               coordinates(ielem, jelem, kelem, dof_xi, l) *
+                                   jacobian(ielem, jelem, kelem, dof_xi, 2, m));
+                  }
+
+                  contravariant(ielem, jelem, kelem, dof, 1, n) = result;
+                }
+              }
+            }
+
+            // =========================================================
+            // Ja^3_n  (ζ-direction)
+            // =========================================================
+
+            for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+              for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+                for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+
+                  const std::size_t dof =
+                      DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode,
+                                                             knode);
+
+                  T result = 0.0;
+
+                  // -------------------------
+                  // (A)_ξ term
+                  // -------------------------
+                  for (std::size_t ii = 0; ii < Basis::NNodes; ++ii) {
+
+                    const std::size_t dof_xi =
+                        DGSEM::utils::local_dof<Basis::NNodes>(ii, jnode,
+                                                               knode);
+
+                    result += 0.5 * Basis::derivative_host(inode, ii) *
+                              (coordinates(ielem, jelem, kelem, dof_xi, m) *
+                                   jacobian(ielem, jelem, kelem, dof_xi, 1, l) -
+                               coordinates(ielem, jelem, kelem, dof_xi, l) *
+                                   jacobian(ielem, jelem, kelem, dof_xi, 1, m));
+                  }
+
+                  // -------------------------
+                  // (B)_η term
+                  // -------------------------
+                  for (std::size_t ii = 0; ii < Basis::NNodes; ++ii) {
+
+                    const std::size_t dof_eta =
+                        DGSEM::utils::local_dof<Basis::NNodes>(inode, ii,
+                                                               knode);
+
+                    result -=
+                        0.5 * Basis::derivative_host(jnode, ii) *
+                        (coordinates(ielem, jelem, kelem, dof_eta, m) *
+                             jacobian(ielem, jelem, kelem, dof_eta, 0, l) -
+                         coordinates(ielem, jelem, kelem, dof_eta, l) *
+                             jacobian(ielem, jelem, kelem, dof_eta, 0, m));
+                  }
+
+                  contravariant(ielem, jelem, kelem, dof, 2, n) = result;
+                }
+              }
+            }
+
+          } // n-loop
+        }
+      }
+    }
+  }
+
+  inline constexpr static void
+  calc_inverse_jacobian(const std::array<std::size_t, 3>& n_cells,
+                        ScalarArrayHost& inverse_jacobian,
+                        const MatrixHost& jacobian) {
+    for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
+      for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
+        for (std::size_t kelem = 0; kelem < n_cells[2]; ++kelem) {
+          for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+            for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+              for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+                const std::size_t dof =
+                    DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode, knode);
+                const T j11 = jacobian(ielem, jelem, kelem, dof, 0, 0);
+                const T j12 = jacobian(ielem, jelem, kelem, dof, 0, 1);
+                const T j13 = jacobian(ielem, jelem, kelem, dof, 0, 2);
+                const T j21 = jacobian(ielem, jelem, kelem, dof, 1, 0);
+                const T j22 = jacobian(ielem, jelem, kelem, dof, 1, 1);
+                const T j23 = jacobian(ielem, jelem, kelem, dof, 1, 2);
+                const T j31 = jacobian(ielem, jelem, kelem, dof, 2, 0);
+                const T j32 = jacobian(ielem, jelem, kelem, dof, 2, 1);
+                const T j33 = jacobian(ielem, jelem, kelem, dof, 2, 2);
+
+                const T det = j11 * (j22 * j33 - j23 * j32) -
+                              j12 * (j21 * j33 - j23 * j31) +
+                              j13 * (j21 * j32 - j22 * j31);
+                inverse_jacobian(ielem, jelem, kelem, dof) =
+                    static_cast<T>(1.0) / det;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  inline constexpr static void
+  initialize_left_neighbor(const std::array<std::size_t, 3>& n_cells,
+                           IndexArrayHost& neighbors,
+                           const std::array<bool, 3>& periodic) {
+    constexpr std::size_t invalid = static_cast<std::size_t>(-1);
+
+    for (std::size_t ielem = 0; ielem < n_cells[0]; ++ielem) {
+      for (std::size_t jelem = 0; jelem < n_cells[1]; ++jelem) {
+        for (std::size_t kelem = 0; kelem < n_cells[2]; ++kelem) {
+          neighbors(ielem, jelem, kelem, 0, 0) =
+              (ielem > 0) ? ielem - 1
+                          : (periodic[0] ? n_cells[0] - 1 : invalid);
+          neighbors(ielem, jelem, kelem, 0, 1) = jelem;
+          neighbors(ielem, jelem, kelem, 0, 2) = kelem;
+
+          neighbors(ielem, jelem, kelem, 1, 0) = ielem;
+          neighbors(ielem, jelem, kelem, 1, 1) =
+              (jelem > 0) ? jelem - 1
+                          : (periodic[1] ? n_cells[1] - 1 : invalid);
+          neighbors(ielem, jelem, kelem, 1, 2) = kelem;
+
+          neighbors(ielem, jelem, kelem, 2, 0) = ielem;
+          neighbors(ielem, jelem, kelem, 2, 1) = jelem;
+          neighbors(ielem, jelem, kelem, 2, 2) =
+              (kelem > 0) ? kelem - 1
+                          : (periodic[2] ? n_cells[2] - 1 : invalid);
+        }
+      }
+    }
+  }
+};
 } // namespace detail
 
 template <class T, class Basis, class Mapping, std::size_t NDIMS>
@@ -357,13 +749,14 @@ struct StructuredElementInitializer {
 
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         calc_contravariant_vectors(n_cells, container.contravariant_vectors,
-                                   container.jacobian_matrix);
+                                   container.jacobian_matrix,
+                                   container.node_coordinates);
 
     detail::StructuredContainerInitializer<T, Basis, Mapping, NDIMS>::
         calc_inverse_jacobian(n_cells, container.inverse_jacobian,
                               container.jacobian_matrix);
 
-    if constexpr (NDIMS == 2) {
+    if constexpr (NDIMS >= 2) {
       container.subcell_normals.template initialize_host<Basis>(
           n_cells, container.contravariant_vectors);
     }

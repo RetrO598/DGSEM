@@ -48,6 +48,31 @@ struct BCDispatcher<2, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ElementData,
   }
 };
 
+template <class BC, class Equations, class SurfaceFlux, class Mesh, class T,
+          class ArrayU, class ElementData, class ArrayFlux>
+struct BCDispatcher<3, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ElementData,
+                    ArrayFlux> {
+  static void dispatch(const BC& bc, const Mesh& mesh, const Equations& eq,
+                       const ArrayU& u, const ElementData& element_data,
+                       ArrayFlux& surface_flux, std::size_t face_id, T time) {
+    auto n_cells = mesh.get_num_cells();
+    std::size_t range = 0;
+    if (face_id < 2) {
+      range = n_cells[1] * n_cells[2];
+    } else if (face_id < 4) {
+      range = n_cells[0] * n_cells[2];
+    } else {
+      range = n_cells[0] * n_cells[1];
+    }
+
+    Kokkos::parallel_for(
+        "BC_Apply_3D", range, KOKKOS_LAMBDA(int i) {
+          bc.template apply_device<Equations, SurfaceFlux, Mesh, T, 3>(
+              mesh, eq, u, element_data, surface_flux, face_id, time, i);
+        });
+  }
+};
+
 template <class... FaceBCs>
 struct BoundarySet {
   static constexpr std::size_t NFACES = sizeof...(FaceBCs);

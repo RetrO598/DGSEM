@@ -1,0 +1,2 @@
+add_executable(sedov_blast_wave sedov_blast_wave.cpp)
+target_link_libraries(sedov_blast_wave PRIVATE dgsem)

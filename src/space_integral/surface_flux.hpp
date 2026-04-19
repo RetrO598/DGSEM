@@ -126,4 +126,148 @@ struct InterfaceHelper<Basis, Equations, SurfaceFlux,
   }
 };
 
+template <class Basis, class Equations, class SurfaceFlux, class T>
+struct InterfaceHelper<Basis, Equations, SurfaceFlux,
+                       StructuredElementContainer<T, 3>> {
+  using traits = equations::EquationTraits<Equations>;
+  constexpr static std::size_t NVARS = traits::NVARS;
+  using MetricArray = typename jacobian_type_traits<T, 3>::JacobianMatrix;
+  using ScalarArray = typename scalar_node_type_traits<T, 3>::ScalarArray;
+
+  KOKKOS_INLINE_FUNCTION static std::size_t face_dof(std::size_t face,
+                                                     std::size_t node_i,
+                                                     std::size_t node_j) {
+    return face * Basis::NNodes * Basis::NNodes +
+           DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j);
+  }
+
+  template <class IndexArray, class ArrayU, class ArrayFlux>
+  KOKKOS_INLINE_FUNCTION static void
+  interface_flux(const IndexArray& neighbors,
+                 const MetricArray& contravariant_vectors,
+                 const ScalarArray& inverse_jacobian, const Equations& eq,
+                 std::size_t ielem, std::size_t jelem, std::size_t kelem,
+                 const ArrayU& u, ArrayFlux& surface_flux) {
+    const std::size_t left_i = neighbors(ielem, jelem, kelem, 0, 0);
+    const std::size_t left_j = neighbors(ielem, jelem, kelem, 0, 1);
+    const std::size_t left_k = neighbors(ielem, jelem, kelem, 0, 2);
+    if (left_i != static_cast<std::size_t>(-1) &&
+        left_j != static_cast<std::size_t>(-1) &&
+        left_k != static_cast<std::size_t>(-1)) {
+      for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+        for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+          std::array<T, NVARS> u_ll{};
+          std::array<T, NVARS> u_rr{};
+          const std::size_t left_dof = DGSEM::utils::local_dof<Basis::NNodes>(
+              Basis::NNodes - 1, jnode, knode);
+          const std::size_t right_dof =
+              DGSEM::utils::local_dof<Basis::NNodes>(0, jnode, knode);
+          const T sign_jacobian =
+              inverse_jacobian(ielem, jelem, kelem, right_dof) >= T{0} ? T{1}
+                                                                       : T{-1};
+          const std::array<T, 3> normal = {
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, right_dof, 0, 0),
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, right_dof, 0, 1),
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, right_dof, 0, 2)};
+          for (std::size_t var = 0; var < NVARS; ++var) {
+            u_ll[var] = u(left_i, left_j, left_k, left_dof, var);
+            u_rr[var] = u(ielem, jelem, kelem, right_dof, var);
+          }
+
+          auto interface = SurfaceFlux::numerical_flux(eq, u_ll, u_rr, normal);
+          for (std::size_t var = 0; var < NVARS; ++var) {
+            surface_flux(left_i, left_j, left_k, face_dof(1, jnode, knode),
+                         var) = interface[var];
+            surface_flux(ielem, jelem, kelem, face_dof(0, jnode, knode), var) =
+                interface[var];
+          }
+        }
+      }
+    }
+
+    const std::size_t bottom_i = neighbors(ielem, jelem, kelem, 1, 0);
+    const std::size_t bottom_j = neighbors(ielem, jelem, kelem, 1, 1);
+    const std::size_t bottom_k = neighbors(ielem, jelem, kelem, 1, 2);
+    if (bottom_i != static_cast<std::size_t>(-1) &&
+        bottom_j != static_cast<std::size_t>(-1) &&
+        bottom_k != static_cast<std::size_t>(-1)) {
+      for (std::size_t knode = 0; knode < Basis::NNodes; ++knode) {
+        for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+          std::array<T, NVARS> u_ll{};
+          std::array<T, NVARS> u_rr{};
+          const std::size_t bottom_dof = DGSEM::utils::local_dof<Basis::NNodes>(
+              inode, Basis::NNodes - 1, knode);
+          const std::size_t top_dof =
+              DGSEM::utils::local_dof<Basis::NNodes>(inode, 0, knode);
+          const T sign_jacobian =
+              inverse_jacobian(ielem, jelem, kelem, top_dof) >= T{0} ? T{1}
+                                                                     : T{-1};
+          const std::array<T, 3> normal = {
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, top_dof, 1, 0),
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, top_dof, 1, 1),
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, top_dof, 1, 2)};
+          for (std::size_t var = 0; var < NVARS; ++var) {
+            u_ll[var] = u(bottom_i, bottom_j, bottom_k, bottom_dof, var);
+            u_rr[var] = u(ielem, jelem, kelem, top_dof, var);
+          }
+
+          auto interface = SurfaceFlux::numerical_flux(eq, u_ll, u_rr, normal);
+          for (std::size_t var = 0; var < NVARS; ++var) {
+            surface_flux(bottom_i, bottom_j, bottom_k,
+                         face_dof(3, inode, knode), var) = interface[var];
+            surface_flux(ielem, jelem, kelem, face_dof(2, inode, knode), var) =
+                interface[var];
+          }
+        }
+      }
+    }
+
+    const std::size_t back_i = neighbors(ielem, jelem, kelem, 2, 0);
+    const std::size_t back_j = neighbors(ielem, jelem, kelem, 2, 1);
+    const std::size_t back_k = neighbors(ielem, jelem, kelem, 2, 2);
+    if (back_i != static_cast<std::size_t>(-1) &&
+        back_j != static_cast<std::size_t>(-1) &&
+        back_k != static_cast<std::size_t>(-1)) {
+      for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+        for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+          std::array<T, NVARS> u_ll{};
+          std::array<T, NVARS> u_rr{};
+          const std::size_t back_dof = DGSEM::utils::local_dof<Basis::NNodes>(
+              inode, jnode, Basis::NNodes - 1);
+          const std::size_t front_dof =
+              DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode, 0);
+          const T sign_jacobian =
+              inverse_jacobian(ielem, jelem, kelem, front_dof) >= T{0} ? T{1}
+                                                                       : T{-1};
+          const std::array<T, 3> normal = {
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, front_dof, 2, 0),
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, front_dof, 2, 1),
+              sign_jacobian *
+                  contravariant_vectors(ielem, jelem, kelem, front_dof, 2, 2)};
+          for (std::size_t var = 0; var < NVARS; ++var) {
+            u_ll[var] = u(back_i, back_j, back_k, back_dof, var);
+            u_rr[var] = u(ielem, jelem, kelem, front_dof, var);
+          }
+
+          auto interface = SurfaceFlux::numerical_flux(eq, u_ll, u_rr, normal);
+          for (std::size_t var = 0; var < NVARS; ++var) {
+            surface_flux(back_i, back_j, back_k, face_dof(5, inode, jnode),
+                         var) = interface[var];
+            surface_flux(ielem, jelem, kelem, face_dof(4, inode, jnode), var) =
+                interface[var];
+          }
+        }
+      }
+    }
+  }
+};
+
 } // namespace DGSEM

@@ -12,10 +12,22 @@ KOKKOS_INLINE_FUNCTION constexpr std::size_t local_dof(std::size_t inode,
   return jnode * NNodes + inode;
 }
 
+template <std::size_t NNodes>
+KOKKOS_INLINE_FUNCTION constexpr std::size_t
+local_dof(std::size_t inode, std::size_t jnode, std::size_t knode) {
+  return (knode * NNodes + jnode) * NNodes + inode;
+}
+
 KOKKOS_INLINE_FUNCTION constexpr std::size_t local_dof(std::size_t n_nodes,
                                                        std::size_t inode,
                                                        std::size_t jnode) {
   return jnode * n_nodes + inode;
+}
+
+KOKKOS_INLINE_FUNCTION constexpr std::size_t
+local_dof(std::size_t n_nodes, std::size_t inode, std::size_t jnode,
+          std::size_t knode) {
+  return (knode * n_nodes + jnode) * n_nodes + inode;
 }
 
 } // namespace utils

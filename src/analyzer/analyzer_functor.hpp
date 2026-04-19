@@ -37,6 +37,20 @@ struct AnalyzerFunctor {
         functor, analyzer_);
   }
 
+  static void apply(Analyzer& analyzer_, const Solution& sol_,
+                    std::array<std::size_t, traits::NDIMS> n_elems_)
+    requires(traits::NDIMS == 3)
+  {
+
+    AnalyzerFunctor<Basis, Equations, Analyzer, Solution> functor(sol_);
+    Kokkos::parallel_reduce("analyzer",
+                            Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                                {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
+                                            n_elems_[1] * Basis::NNodes,
+                                            n_elems_[2] * Basis::NNodes}),
+                            functor, analyzer_);
+  }
+
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
                                          Analyzer& analyzer_) const
     requires(traits::NDIMS == 1)
@@ -65,6 +79,27 @@ struct AnalyzerFunctor {
     for (std::size_t var = 0; var < NVARS; ++var) {
       std::size_t node = DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j);
       u[var] = u_device(ielem, jelem, node, var);
+    }
+    analyzer_(u);
+  }
+
+  KOKKOS_INLINE_FUNCTION void
+  operator()(const std::size_t& idof, const std::size_t& jdof,
+             const std::size_t& kdof, Analyzer& analyzer_) const
+    requires(traits::NDIMS == 3)
+  {
+    std::size_t ielem = idof / Basis::NNodes;
+    std::size_t jelem = jdof / Basis::NNodes;
+    std::size_t kelem = kdof / Basis::NNodes;
+    std::size_t node_i = idof % Basis::NNodes;
+    std::size_t node_j = jdof % Basis::NNodes;
+    std::size_t node_k = kdof % Basis::NNodes;
+
+    Kokkos::Array<T, NVARS> u{};
+    for (std::size_t var = 0; var < NVARS; ++var) {
+      std::size_t node =
+          DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
+      u[var] = u_device(ielem, jelem, kelem, node, var);
     }
     analyzer_(u);
   }

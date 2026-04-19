@@ -7,7 +7,6 @@
 namespace DGSEM {
 namespace equations {
 class Equations1DBase {
-
 public:
   KOKKOS_INLINE_FUNCTION
   virtual ~Equations1DBase() = default;
@@ -17,6 +16,12 @@ class Equations2DBase {
 public:
   KOKKOS_INLINE_FUNCTION
   virtual ~Equations2DBase() = default;
+};
+
+class Equations3DBase {
+public:
+  KOKKOS_INLINE_FUNCTION
+  virtual ~Equations3DBase() = default;
 };
 
 template <class Equations>
