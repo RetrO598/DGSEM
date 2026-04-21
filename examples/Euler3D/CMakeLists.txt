@@ -1,1 +1,2 @@
 add_subdirectory(sedov_blast_wave)
+add_subdirectory(inviscid_tgv)
