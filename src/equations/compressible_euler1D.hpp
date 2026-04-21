@@ -13,6 +13,7 @@ template <class T>
 class CompressibleEuler1D : public Equations1DBase {
 public:
   using value_type = T;
+  KOKKOS_INLINE_FUNCTION
   CompressibleEuler1D(const T& gamma) : gamma_(gamma) {}
 
   constexpr static std::size_t NDIMS = 1;
@@ -45,12 +46,10 @@ public:
     value_type gamma = gamma_;
     value_type p_ll =
         (gamma - static_cast<value_type>(1.0)) *
-        (rhoE_ll -
-         static_cast<value_type>(0.5) * rho_ll * u_vel_ll * u_vel_ll);
+        (rhoE_ll - static_cast<value_type>(0.5) * rho_ll * u_vel_ll * u_vel_ll);
     value_type p_rr =
         (gamma - static_cast<value_type>(1.0)) *
-        (rhoE_rr -
-         static_cast<value_type>(0.5) * rho_rr * u_vel_rr * u_vel_rr);
+        (rhoE_rr - static_cast<value_type>(0.5) * rho_rr * u_vel_rr * u_vel_rr);
     value_type a_ll = std::sqrt(gamma * p_ll / rho_ll);
     value_type a_rr = std::sqrt(gamma * p_rr / rho_rr);
     return std::max(std::abs(u_vel_ll), std::abs(u_vel_rr)) +

@@ -46,6 +46,25 @@ cons_to_prim_impl(const std::array<T, NDIMS + 2>& cons, T gamma) {
   return prim;
 }
 
+template <class T, std::size_t NDIMS>
+KOKKOS_INLINE_FUNCTION std::array<T, NDIMS + 2>
+cons_to_prim_impl(const Kokkos::Array<T, NDIMS + 2>& cons, T gamma) {
+  std::array<T, NDIMS + 2> prim{};
+  prim[0] = cons[0];
+
+  T velocity_sq = T{0};
+  for (std::size_t dim = 0; dim < NDIMS; ++dim) {
+    const T velocity = cons[dim + 1] / cons[0];
+    prim[dim + 1] = velocity;
+    velocity_sq += velocity * velocity;
+  }
+
+  prim[NDIMS + 1] =
+      (gamma - static_cast<T>(1)) *
+      (cons[NDIMS + 1] - static_cast<T>(0.5) * cons[0] * velocity_sq);
+  return prim;
+}
+
 template <class Equations>
 using equation_traits = equations::EquationTraits<Equations>;
 } // namespace detail
@@ -60,6 +79,13 @@ prim_to_cons(const std::array<T, N>& prim, T gamma) {
 template <class T, std::size_t N>
 KOKKOS_INLINE_FUNCTION std::array<T, N>
 cons_to_prim(const std::array<T, N>& cons, T gamma) {
+  static_assert(N >= 3, "cons_to_prim expects at least 1D Euler state data.");
+  return detail::cons_to_prim_impl<T, N - 2>(cons, gamma);
+}
+
+template <class T, std::size_t N>
+KOKKOS_INLINE_FUNCTION std::array<T, N>
+cons_to_prim(const Kokkos::Array<T, N>& cons, T gamma) {
   static_assert(N >= 3, "cons_to_prim expects at least 1D Euler state data.");
   return detail::cons_to_prim_impl<T, N - 2>(cons, gamma);
 }

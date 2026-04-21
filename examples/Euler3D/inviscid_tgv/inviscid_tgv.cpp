@@ -1,3 +1,5 @@
+#include "analyzer/volume_average_euler.hpp"
+#include "observer/analysis_observer.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <cmath>
@@ -23,7 +25,7 @@ struct InviscidTaylorGreenVortex
     T v1 = std::sin(x) * std::cos(y) * std::cos(z);
     T v2 = -std::cos(x) * std::sin(y) * std::cos(z);
     T v3 = 0.0;
-    T p = 100.0 +
+    T p = 100.0 / 1.4 +
           1.0 / 16.0 *
               (std::cos(2.0 * x) * std::cos(2.0 * z) + 2.0 * std::cos(2.0 * y) +
                2.0 * std::cos(2.0 * x) + std::cos(2.0 * y) * std::cos(2.0 * z));
@@ -61,7 +63,7 @@ int main() {
     std::size_t nx = 16;
     std::size_t ny = 16;
     std::size_t nz = 16;
-    value_type t_final = 12.0;
+    value_type t_final = 14.0;
 
     std::array<value_type, 3> domain_left = {0.0, 0.0, 0.0};
     std::array<value_type, 3> domain_right = {
@@ -90,11 +92,15 @@ int main() {
     solver.initialize(initial, sol);
 
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
-    using Analyzer = DGSEM::CompositeAnalyzer<
-        MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+    using Analyzer =
+        DGSEM::AnalyzerWrapper<MyBasis, Eq,
+                               DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
     Analyzer analyzer;
-    using AnalyzerObserver =
-        DGSEM::AnalyzerObserver<MyBasis, Eq, Solution, Analyzer>;
+
+    using static_analyzer =
+        DGSEM::AnalyzerWrapper<MyBasis, Eq, DGSEM::VolumeAverageEuler<Eq>>;
+
+    static_analyzer analyzer_statics;
     using DGSEM::PrintObserver;
     using VTUOutputObserver =
         DGSEM::VTUOutputObserver<value_type, MyBasis, Solution,
@@ -109,11 +115,19 @@ int main() {
     const value_type max_speed = 2.0;
     const value_type dt =
         cfl * std::min({dx, dy, dz}) / max_speed / (3.0 * (2 * order + 1));
-    time_integrator.add_observer(
-        std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
+    time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+        DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
+        DGSEM::StopOnNaN<Eq>()));
+
     time_integrator.add_observer(std::make_unique<PrintObserver>(100));
+
     time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
-        "blast_wave_hg_output", sol, container.node_coordinates, n_cells));
+        "inviscid_tgv", sol, container.node_coordinates, n_cells));
+
+    time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+        DGSEM::VolumeWeightedAnalysisTag{}, analyzer_statics, sol, container,
+        n_cells, DGSEM::VolumeAverageCsvWriter<Eq>("static.csv")));
+
     time_integrator.solve(solver, sol, dt);
 
     MyBasis::finalize();

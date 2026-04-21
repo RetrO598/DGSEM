@@ -16,6 +16,7 @@ class CompressibleEuler3D : public Equations3DBase {
 public:
   using value_type = T;
 
+  KOKKOS_INLINE_FUNCTION
   explicit CompressibleEuler3D(const T& gamma = static_cast<T>(1.4))
       : gamma_(gamma) {}
 

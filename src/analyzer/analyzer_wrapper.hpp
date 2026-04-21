@@ -7,7 +7,7 @@
 #include <utility>
 namespace DGSEM {
 template <class Basis, class Equations, class... Analyzers>
-struct CompositeAnalyzer {
+struct AnalyzerWrapper {
   std::tuple<Analyzers...> analyzers;
 
   using trait = equations::EquationTraits<Equations>;
@@ -31,17 +31,55 @@ struct CompositeAnalyzer {
     apply_impl(u, index_seq{});
   }
 
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const Kokkos::Array<T, NVARS>& u, const T weight) {
+    apply_weighted_impl(u, weight, index_seq{});
+  }
+
   template <std::size_t... I>
   KOKKOS_INLINE_FUNCTION void apply_impl(const Kokkos::Array<T, NVARS>& u,
                                          std::index_sequence<I...>) {
-    ((std::get<I>(analyzers)(u)), ...);
+    (apply_single_unweighted(std::get<I>(analyzers), u), ...);
+  }
+
+  template <class AnalyzerType>
+  KOKKOS_INLINE_FUNCTION static void
+  apply_single_unweighted(AnalyzerType& analyzer,
+                          const Kokkos::Array<T, NVARS>& u) {
+    if constexpr (requires(AnalyzerType a,
+                           const Kokkos::Array<T, NVARS>& state) {
+                    a(state);
+                  }) {
+      analyzer(u);
+    }
+  }
+
+  template <class AnalyzerType>
+  KOKKOS_INLINE_FUNCTION static void
+  apply_single(AnalyzerType& analyzer, const Kokkos::Array<T, NVARS>& u,
+               const T weight) {
+    if constexpr (requires(AnalyzerType a, const Kokkos::Array<T, NVARS>& state,
+                           const T volume_weight) {
+                    a(state, volume_weight);
+                  }) {
+      analyzer(u, weight);
+    } else {
+      analyzer(u);
+    }
+  }
+
+  template <std::size_t... I>
+  KOKKOS_INLINE_FUNCTION void
+  apply_weighted_impl(const Kokkos::Array<T, NVARS>& u, const T weight,
+                      std::index_sequence<I...>) {
+    (apply_single(std::get<I>(analyzers), u, weight), ...);
   }
 
   KOKKOS_INLINE_FUNCTION
-  void join(const CompositeAnalyzer& other) { join_impl(other, index_seq{}); }
+  void join(const AnalyzerWrapper& other) { join_impl(other, index_seq{}); }
 
   template <std::size_t... I>
-  KOKKOS_INLINE_FUNCTION void join_impl(const CompositeAnalyzer& other,
+  KOKKOS_INLINE_FUNCTION void join_impl(const AnalyzerWrapper& other,
                                         std::index_sequence<I...>) {
     ((std::get<I>(analyzers).join(std::get<I>(other.analyzers))), ...);
   }

@@ -120,12 +120,11 @@ int main() {
     Riemann2DInitial<value_type> initial{};
     solver.initialize(initial, sol);
 
-    using Analyzer = DGSEM::CompositeAnalyzer<
-        MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+    using Analyzer =
+        DGSEM::AnalyzerWrapper<MyBasis, Eq,
+                               DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
     Analyzer analyzer;
 
-    using AnalyzerObserver =
-        DGSEM::AnalyzerObserver<MyBasis, Eq, Solution, Analyzer>;
     using DGSEM::PrintObserver;
 
     using VTUOutputObserver =
@@ -143,9 +142,10 @@ int main() {
     const value_type dt =
         cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
 
-    // 注册 observer
-    time_integrator.add_observer(
-        std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
+    time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+        DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
+        DGSEM::StopOnNaN<Eq>()));
+
     time_integrator.add_observer(std::make_unique<PrintObserver>(100));
     time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
         "riemann2d_output", sol, container.node_coordinates, n_cells, 1000));

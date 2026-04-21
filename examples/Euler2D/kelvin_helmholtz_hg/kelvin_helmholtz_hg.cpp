@@ -88,12 +88,11 @@ int main(int argc, char* argv[]) {
     KelvinHelmholtzInitial<value_type> initial{};
     solver.initialize(initial, sol);
 
-    using Analyzer = DGSEM::CompositeAnalyzer<
-        MyBasis, Eq, DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+    using Analyzer =
+        DGSEM::AnalyzerWrapper<MyBasis, Eq,
+                               DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
     Analyzer analyzer;
 
-    using AnalyzerObserver =
-        DGSEM::AnalyzerObserver<MyBasis, Eq, Solution, Analyzer>;
     using DGSEM::PrintObserver;
     using VTUOutputObserver =
         DGSEM::VTUOutputObserver<value_type, MyBasis, Solution,
@@ -110,8 +109,10 @@ int main(int argc, char* argv[]) {
     //     cfl * std::min(dx, dy) / ((2.0 * MyBasis::NNodes - 1.0) * max_speed);
     const value_type dt = 8e-5;
 
-    time_integrator.add_observer(
-        std::make_unique<AnalyzerObserver>(analyzer, sol, n_cells));
+    time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+        DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
+        DGSEM::StopOnNaN<Eq>()));
+
     time_integrator.add_observer(std::make_unique<PrintObserver>(100));
     time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
         "kelvin_helmholtz_hg_output", sol, container.node_coordinates,

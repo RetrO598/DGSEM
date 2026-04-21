@@ -15,6 +15,7 @@ class CompressibleEuler2D : public Equations2DBase {
 public:
   using value_type = T;
 
+  KOKKOS_INLINE_FUNCTION
   explicit CompressibleEuler2D(const T& gamma = static_cast<T>(1.4))
       : gamma_(gamma) {}
 
