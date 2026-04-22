@@ -114,15 +114,15 @@ int main(int argc, char* argv[]) {
     Eq eq{gamma};
 
     DGSEM::StructuredElementContainer<value_type, 2> container;
-    DGSEM::StructuredElementInitializer<
-        value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 2>>, 2>
-        initializer{DGSEM::LinearMapping<std::array<value_type, 2>>(
-                        domain_left, domain_right),
-                    {false, false}};
+    // DGSEM::StructuredElementInitializer<
+    //     value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 2>>,
+    //     2> initializer{DGSEM::LinearMapping<std::array<value_type, 2>>(
+    //                     domain_left, domain_right),
+    //                 {false, false}};
 
-    initializer.init_elements(n_cells, container);
+    // initializer.init_elements(n_cells, container);
 
-    Solver solver(eq, mesh, container, boundaries);
+    Solver solver(eq, mesh, container, boundaries, {false, false});
     solver.set_indicator_parameters(0.5, 0.001, false);
 
     Solution sol(mesh);
