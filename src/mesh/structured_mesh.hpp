@@ -10,12 +10,13 @@ namespace DGSEM {
 template <class T, std::size_t NDIM>
 class StructuredMesh {
 public:
-  StructuredMesh(const std::array<T, NDIM>& domain_left,
-                 const std::array<T, NDIM>& domain_right,
+  StructuredMesh(const std::array<T, NDIM>& domain_left_,
+                 const std::array<T, NDIM>& domain_right_,
                  const std::array<std::size_t, NDIM> n_cells_)
       : n_cells(n_cells_), num_boundarys(2 * NDIM),
         nelem(std::accumulate(n_cells_.begin(), n_cells_.end(), std::size_t{1},
-                              std::multiplies<std::size_t>())) {
+                              std::multiplies<std::size_t>())),
+        domain_left(domain_left_), domain_right(domain_right_) {
     for (std::size_t i = 0; i < NDIM; ++i) {
       domain[2 * i] = domain_left[i];
       domain[2 * i + 1] = domain_right[i];
@@ -54,11 +55,19 @@ public:
     return T{};
   }
 
+  KOKKOS_INLINE_FUNCTION
+  std::array<T, NDIM> get_domain_left() const { return domain_left; }
+
+  KOKKOS_INLINE_FUNCTION
+  std::array<T, NDIM> get_domain_right() const { return domain_right; }
+
 private:
   std::size_t num_boundarys;
   std::array<T, 2 * NDIM> domain; // [xmin, xmax, ymin, ymax, zmin, zmax]
   std::array<std::size_t, NDIM> n_cells;
   std::size_t nelem;
+  std::array<T, NDIM> domain_left;
+  std::array<T, NDIM> domain_right;
 };
 
 } // namespace DGSEM

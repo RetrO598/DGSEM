@@ -1,5 +1,7 @@
 #pragma once
 
+#include "base/mapping.hpp"
+#include "containers/data_container.hpp"
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Macros.hpp>
 #include <array>
@@ -35,6 +37,21 @@ public:
       : eq(eq_), mesh(mesh_), element(element_), boundary_set(boundary_set_),
         n_dofs(std::pow(Basis::NNodes, NDIMS)) {
     n_cells = mesh.get_num_cells();
+  }
+
+  StructuredSolver(const Equations& eq_, const Mesh& mesh_,
+                   ElementCache& element_, const BoundarySetType& boundary_set_,
+                   const std::array<bool, NDIMS>& periodic)
+      : eq(eq_), mesh(mesh_), boundary_set(boundary_set_),
+        n_dofs(std::pow(Basis::NNodes, NDIMS)) {
+    n_cells = mesh.get_num_cells();
+    StructuredElementInitializer<
+        value_type, Basis, LinearMapping<std::array<value_type, NDIMS>>, NDIMS>
+        initializer{LinearMapping<std::array<value_type, NDIMS>>(
+                        mesh.get_domain_left(), mesh.get_domain_right()),
+                    periodic};
+    initializer.init_elements(n_cells, element_);
+    element = element_;
   }
 
   template <class Derived>

@@ -63,7 +63,7 @@ int main() {
     std::size_t nx = 16;
     std::size_t ny = 16;
     std::size_t nz = 16;
-    value_type t_final = 2.0;
+    value_type t_final = 14.0;
 
     std::array<value_type, 3> domain_left = {0.0, 0.0, 0.0};
     std::array<value_type, 3> domain_right = {
@@ -75,15 +75,15 @@ int main() {
     Eq eq{1.4};
 
     DGSEM::StructuredElementContainer<value_type, 3> container;
-    DGSEM::StructuredElementInitializer<
-        value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 3>>, 3>
-        initializer{DGSEM::LinearMapping<std::array<value_type, 3>>(
-                        domain_left, domain_right),
-                    {true, true, true}};
+    // DGSEM::StructuredElementInitializer<
+    //     value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 3>>,
+    //     3> initializer{DGSEM::LinearMapping<std::array<value_type, 3>>(
+    //                     domain_left, domain_right),
+    //                 {true, true, true}};
 
-    initializer.init_elements(n_cells, container);
+    // initializer.init_elements(n_cells, container);
 
-    Solver solver(eq, mesh, container, boundaries);
+    Solver solver(eq, mesh, container, boundaries, {true, true, true});
     solver.set_indicator_parameters(1.0, 0.001, false);
 
     Solution sol(mesh);
