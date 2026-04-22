@@ -63,7 +63,7 @@ int main() {
     std::size_t nx = 16;
     std::size_t ny = 16;
     std::size_t nz = 16;
-    value_type t_final = 14.0;
+    value_type t_final = 2.0;
 
     std::array<value_type, 3> domain_left = {0.0, 0.0, 0.0};
     std::array<value_type, 3> domain_right = {

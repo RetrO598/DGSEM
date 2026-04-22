@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <vector>
 #include <vtkCellData.h>
 #include <vtkDoubleArray.h>
 #include <vtkHigherOrderQuadrilateral.h>
@@ -15,8 +17,9 @@ namespace detail {
 
 inline void write_vtu_lagrange_quad(const std::string& filename,
                                     const std::vector<double>& points,
-                                    const std::vector<double>& values, int nx,
-                                    int ny, int NNodes, int nvars) {
+                                    const std::vector<double>& values,
+                                    const std::vector<std::string>& var_names,
+                                    int nx, int ny, int NNodes, int nvars) {
   const int ndof = NNodes * NNodes;
   const int nelem = nx * ny;
   const int total_points = nelem * ndof;
@@ -55,7 +58,7 @@ inline void write_vtu_lagrange_quad(const std::string& filename,
   // ----------------------------
   for (int v = 0; v < nvars; ++v) {
     auto arr = vtkSmartPointer<vtkDoubleArray>::New();
-    arr->SetName(("var" + std::to_string(v)).c_str());
+    arr->SetName(var_names[v].c_str());
     arr->SetNumberOfTuples(total_points);
 
     for (int i = 0; i < total_points; ++i)
@@ -79,8 +82,10 @@ inline void write_vtu_lagrange_quad(const std::string& filename,
 
 inline void write_vtu_lagrange_hex(const std::string& filename,
                                    const std::vector<double>& points,
-                                   const std::vector<double>& values, int nx,
-                                   int ny, int nz, int NNodes, int nvars) {
+                                   const std::vector<double>& values,
+                                   const std::vector<std::string>& var_names,
+                                   int nx, int ny, int nz, int NNodes,
+                                   int nvars) {
   const int ndof = NNodes * NNodes * NNodes;
   const int nelem = nx * ny * nz;
   const int total_points = nelem * ndof;
@@ -116,7 +121,7 @@ inline void write_vtu_lagrange_hex(const std::string& filename,
   // ----------------------------
   for (int v = 0; v < nvars; ++v) {
     auto arr = vtkSmartPointer<vtkDoubleArray>::New();
-    arr->SetName(("var" + std::to_string(v)).c_str());
+    arr->SetName(var_names[v].c_str());
     arr->SetNumberOfTuples(total_points);
     for (int i = 0; i < total_points; ++i)
       arr->SetValue(i, values[i * nvars + v]);

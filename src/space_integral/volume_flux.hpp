@@ -262,12 +262,12 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
           }
         }
 
-        const std::size_t dof_j =
-            DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
+        // const std::size_t dof_j =
+        //     DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
 
-        for (std::size_t var = 0; var < NVARS; ++var) {
-          u_node[var] = u(ielem, jelem, dof_j, var);
-        }
+        // for (std::size_t var = 0; var < NVARS; ++var) {
+        //   u_node[var] = u(ielem, jelem, dof_j, var);
+        // }
 
         for (std::size_t lnode = jnode + 1; lnode < BasisData::NNodes;
              ++lnode) {
@@ -279,9 +279,9 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
           }
 
           const std::array<T, 2> normal = {
-              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 0) +
+              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_i, 1, 0) +
                         contravariant_vectors(ielem, jelem, dof_l, 1, 0)),
-              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_j, 1, 1) +
+              (T)0.5 * (contravariant_vectors(ielem, jelem, dof_i, 1, 1) +
                         contravariant_vectors(ielem, jelem, dof_l, 1, 1))};
           const auto flux_jl =
               NumericFlux::numerical_flux(eq, u_node, u_node_l, normal);
@@ -289,7 +289,7 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
           // Reduce the computation by exploiting the symmetry of the flux. Note
           // the diagonal terms of Dsplit matrix is zero.
           for (std::size_t var = 0; var < NVARS; ++var) {
-            du(ielem, jelem, dof_j, var) +=
+            du(ielem, jelem, dof_i, var) +=
                 alpha * basis.derivative_split(jnode, lnode) * flux_jl[var];
             du(ielem, jelem, dof_l, var) +=
                 alpha * basis.derivative_split(lnode, jnode) * flux_jl[var];
