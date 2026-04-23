@@ -12,12 +12,14 @@ struct VolumeWeightedAnalyzerFunctor {
   using traits = equations::EquationTraits<Equations>;
   using T = typename traits::value_type;
   using DataArray = typename solution_type_traits<T, traits::NDIMS>::DataArray;
+  using BasisData = typename Basis::DeviceData;
 
   constexpr static std::size_t NVARS = traits::NVARS;
 
   VolumeWeightedAnalyzerFunctor(const Solution& sol_,
                                 const ScalarArray& inverse_jacobian_)
-      : u_device(sol_.u_device), inverse_jacobian(inverse_jacobian_) {}
+      : u_device(sol_.u_device), inverse_jacobian(inverse_jacobian_),
+        basis_data(Basis::device_data()) {}
 
   static void apply(Analyzer& analyzer_, const Solution& sol_,
                     const ScalarArray& inverse_jacobian_,
@@ -54,12 +56,12 @@ struct VolumeWeightedAnalyzerFunctor {
     VolumeWeightedAnalyzerFunctor<Basis, Equations, Analyzer, Solution,
                                   ScalarArray>
         functor(sol_, inverse_jacobian_);
-    Kokkos::parallel_reduce(
-        "volume_weighted_analyzer",
-        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-            {0, 0, 0}, {n_elems_[0] * Basis::NNodes, n_elems_[1] * Basis::NNodes,
-                        n_elems_[2] * Basis::NNodes}),
-        functor, analyzer_);
+    Kokkos::parallel_reduce("volume_weighted_analyzer",
+                            Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                                {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
+                                            n_elems_[1] * Basis::NNodes,
+                                            n_elems_[2] * Basis::NNodes}),
+                            functor, analyzer_);
   }
 
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
@@ -96,10 +98,10 @@ struct VolumeWeightedAnalyzerFunctor {
       u[var] = u_device(ielem, jelem, node, var);
     }
 
-    const T quadrature_weight = Basis::weights(node_i) * Basis::weights(node_j);
+    const T quadrature_weight =
+        basis_data.weights(node_i) * basis_data.weights(node_j);
     const T volume_weight =
-        quadrature_weight /
-        Kokkos::abs(inverse_jacobian(ielem, jelem, node));
+        quadrature_weight / Kokkos::abs(inverse_jacobian(ielem, jelem, node));
     analyzer_(u, volume_weight);
   }
 
@@ -122,8 +124,9 @@ struct VolumeWeightedAnalyzerFunctor {
       u[var] = u_device(ielem, jelem, kelem, node, var);
     }
 
-    const T quadrature_weight = Basis::weights(node_i) * Basis::weights(node_j) *
-                                Basis::weights(node_k);
+    const T quadrature_weight = basis_data.weights(node_i) *
+                                basis_data.weights(node_j) *
+                                basis_data.weights(node_k);
     const T volume_weight =
         quadrature_weight /
         Kokkos::abs(inverse_jacobian(ielem, jelem, kelem, node));
@@ -140,5 +143,6 @@ struct VolumeWeightedAnalyzerFunctor {
 
   DataArray u_device;
   ScalarArray inverse_jacobian;
+  BasisData basis_data;
 };
 } // namespace DGSEM

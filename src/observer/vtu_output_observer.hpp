@@ -53,131 +53,16 @@ public:
   }
 
   template <class equation>
-  void write_vtu(const std::string& filename) const
-    requires(NDIMS == 2)
-  {
-    std::size_t nx = n_elems[0];
-    std::size_t ny = n_elems[1];
-
-    const int ndof = NNodes * NNodes;
-    const std::size_t nelem = nx * ny;
-    const std::size_t total_points = nelem * ndof;
-
-    // ----------------------------
-    // host copy
-    // ----------------------------
-    auto u_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
-
-    auto coord_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), coord);
-
-    // ----------------------------
-    // 构造点（每个element独立）
-    // ----------------------------
-    std::vector<double> points(3 * total_points);
-    std::vector<double> values(NVARS * total_points);
-
-    std::vector<std::string> var_names{};
-
-    for (std::size_t i = 0; i < var_names.size(); ++i) {
-      var_names.push_back("var" + std::to_string(i));
+  void write_vtu(const std::string& filename) const {
+    if constexpr (NDIMS == 2) {
+      write_vtu_2d<equation>(filename);
+    } else if constexpr (NDIMS == 3) {
+      write_vtu_3d<equation>(filename);
     }
-
-    for (std::size_t je = 0; je < ny; ++je)
-      for (std::size_t ie = 0; ie < nx; ++ie) {
-        std::size_t e = je * nx + ie;
-
-        for (int jd = 0; jd < NNodes; ++jd)
-          for (int id = 0; id < NNodes; ++id) {
-            int dg_id = jd * NNodes + id;
-            static auto tmp = vtkSmartPointer<vtkLagrangeQuadrilateral>::New();
-            tmp->SetOrder(N, N);
-
-            int vtk_id = tmp->PointIndexFromIJK(id, jd, 0);
-            std::size_t gid = e * ndof + vtk_id;
-
-            // 坐标
-            points[3 * gid + 0] = coord_host(ie, je, dg_id, 0);
-            points[3 * gid + 1] = coord_host(ie, je, dg_id, 1);
-            points[3 * gid + 2] = 0.0;
-
-            // 变量
-            for (int v = 0; v < NVARS; ++v)
-              values[gid * NVARS + v] = u_host(ie, je, dg_id, v);
-          }
-      }
-
-    DGSEM::detail::write_vtu_lagrange_quad(filename, points, values, var_names,
-                                           nx, ny, NNodes, NVARS);
   }
 
   template <class equation>
-  void write_vtu(const std::string& filename) const
-    requires(NDIMS == 3)
-  {
-    std::size_t nx = n_elems[0];
-    std::size_t ny = n_elems[1];
-    std::size_t nz = n_elems[2];
-
-    const int ndof = NNodes * NNodes * NNodes;
-    const std::size_t nelem = nx * ny * nz;
-    const std::size_t total_points = nelem * ndof;
-
-    // ----------------------------
-    // host copy
-    // ----------------------------
-    auto u_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
-
-    auto coord_host =
-        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), coord);
-
-    // ----------------------------
-    // 构造点（每个element独立）
-    // ----------------------------
-    std::vector<double> points(3 * total_points);
-    std::vector<double> values(NVARS * total_points);
-
-    std::vector<std::string> var_names{};
-
-    for (std::size_t i = 0; i < var_names.size(); ++i) {
-      var_names.push_back("var" + std::to_string(i));
-    }
-
-    for (std::size_t ke = 0; ke < nz; ++ke)
-      for (std::size_t je = 0; je < ny; ++je)
-        for (std::size_t ie = 0; ie < nx; ++ie) {
-          std::size_t e = (ke * ny + je) * nx + ie;
-
-          for (int kd = 0; kd < NNodes; ++kd)
-            for (int jd = 0; jd < NNodes; ++jd)
-              for (int id = 0; id < NNodes; ++id) {
-                int dg_id = (kd * NNodes + jd) * NNodes + id;
-                static auto tmp = vtkSmartPointer<vtkLagrangeHexahedron>::New();
-                tmp->SetOrder(N, N, N);
-
-                int vtk_id = tmp->PointIndexFromIJK(id, jd, kd);
-                std::size_t gid = e * ndof + vtk_id;
-
-                // 坐标
-                points[3 * gid + 0] = coord_host(ie, je, ke, dg_id, 0);
-                points[3 * gid + 1] = coord_host(ie, je, ke, dg_id, 1);
-                points[3 * gid + 2] = coord_host(ie, je, ke, dg_id, 2);
-
-                // 变量
-                for (int v = 0; v < NVARS; ++v)
-                  values[gid * NVARS + v] = u_host(ie, je, ke, dg_id, v);
-              }
-        }
-
-    DGSEM::detail::write_vtu_lagrange_hex(filename, points, values, var_names,
-                                          nx, ny, nz, NNodes, NVARS);
-  }
-
-  template <>
-  void write_vtu<equations::CompressibleEuler2D<T>>(
-      const std::string& filename) const {
+  void write_vtu_2d(const std::string& filename) const {
     std::size_t nx = n_elems[0];
     std::size_t ny = n_elems[1];
 
@@ -185,29 +70,32 @@ public:
     const std::size_t nelem = nx * ny;
     const std::size_t total_points = nelem * ndof;
 
-    // ----------------------------
-    // host copy
-    // ----------------------------
     auto u_host =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
 
     auto coord_host =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), coord);
 
-    // ----------------------------
-    // 构造点（每个element独立）
-    // ----------------------------
-    const std::size_t nvars = NVARS + 1; // Additional variable for pressure
+    constexpr bool is_euler =
+        std::is_same_v<equation, equations::CompressibleEuler2D<T>>;
+
+    const std::size_t nvars = is_euler ? NVARS + 1 : NVARS;
+
     std::vector<double> points(3 * total_points);
     std::vector<double> values(nvars * total_points);
 
-    std::vector<std::string> var_names{};
+    std::vector<std::string> var_names;
 
-    var_names.push_back("rho");
-    var_names.push_back("rhou");
-    var_names.push_back("rhov");
-    var_names.push_back("rhoE");
-    var_names.push_back("pressure");
+    if constexpr (is_euler) {
+      var_names = {"rho", "rhou", "rhov", "rhoE", "pressure"};
+    } else {
+      for (std::size_t i = 0; i < NVARS; ++i) {
+        var_names.push_back("var" + std::to_string(i));
+      }
+    }
+
+    static auto tmp = vtkSmartPointer<vtkLagrangeQuadrilateral>::New();
+    tmp->SetOrder(N, N);
 
     for (std::size_t je = 0; je < ny; ++je)
       for (std::size_t ie = 0; ie < nx; ++ie) {
@@ -216,8 +104,6 @@ public:
         for (int jd = 0; jd < NNodes; ++jd)
           for (int id = 0; id < NNodes; ++id) {
             int dg_id = jd * NNodes + id;
-            static auto tmp = vtkSmartPointer<vtkLagrangeQuadrilateral>::New();
-            tmp->SetOrder(N, N);
 
             int vtk_id = tmp->PointIndexFromIJK(id, jd, 0);
             std::size_t gid = e * ndof + vtk_id;
@@ -228,14 +114,16 @@ public:
             points[3 * gid + 2] = 0.0;
 
             std::array<T, NVARS> cons{};
+
             for (int v = 0; v < NVARS; ++v) {
               values[gid * nvars + v] = u_host(ie, je, dg_id, v);
               cons[v] = values[gid * nvars + v];
             }
 
-            auto prim = DGSEM::utils::cons_to_prim(cons, 1.4);
-
-            values[gid * nvars + NVARS] = prim[3];
+            if constexpr (is_euler) {
+              auto prim = DGSEM::utils::cons_to_prim(cons, 1.4);
+              values[gid * nvars + NVARS] = prim[3]; // pressure
+            }
           }
       }
 
@@ -243,9 +131,8 @@ public:
                                            nx, ny, NNodes, nvars);
   }
 
-  template <>
-  void write_vtu<equations::CompressibleEuler3D<T>>(
-      const std::string& filename) const {
+  template <class equation>
+  void write_vtu_3d(const std::string& filename) const {
     std::size_t nx = n_elems[0];
     std::size_t ny = n_elems[1];
     std::size_t nz = n_elems[2];
@@ -254,30 +141,32 @@ public:
     const std::size_t nelem = nx * ny * nz;
     const std::size_t total_points = nelem * ndof;
 
-    // ----------------------------
-    // host copy
-    // ----------------------------
     auto u_host =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sol.u_device);
 
     auto coord_host =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), coord);
 
-    // ----------------------------
-    // 构造点（每个element独立）
-    // ----------------------------
-    const std::size_t nvars = NVARS + 1; // Additional variable for pressure
+    constexpr bool is_euler =
+        std::is_same_v<equation, equations::CompressibleEuler3D<T>>;
+
+    const std::size_t nvars = is_euler ? NVARS + 1 : NVARS;
+
     std::vector<double> points(3 * total_points);
     std::vector<double> values(nvars * total_points);
 
-    std::vector<std::string> var_names{};
+    std::vector<std::string> var_names;
 
-    var_names.push_back("rho");
-    var_names.push_back("rhou");
-    var_names.push_back("rhov");
-    var_names.push_back("rhow");
-    var_names.push_back("rhoE");
-    var_names.push_back("pressure");
+    if constexpr (is_euler) {
+      var_names = {"rho", "rhou", "rhov", "rhow", "rhoE", "pressure"};
+    } else {
+      for (std::size_t i = 0; i < NVARS; ++i) {
+        var_names.push_back("var" + std::to_string(i));
+      }
+    }
+
+    static auto tmp = vtkSmartPointer<vtkLagrangeHexahedron>::New();
+    tmp->SetOrder(N, N, N);
 
     for (std::size_t ke = 0; ke < nz; ++ke)
       for (std::size_t je = 0; je < ny; ++je)
@@ -288,26 +177,25 @@ public:
             for (int jd = 0; jd < NNodes; ++jd)
               for (int id = 0; id < NNodes; ++id) {
                 int dg_id = (kd * NNodes + jd) * NNodes + id;
-                static auto tmp = vtkSmartPointer<vtkLagrangeHexahedron>::New();
-                tmp->SetOrder(N, N, N);
 
                 int vtk_id = tmp->PointIndexFromIJK(id, jd, kd);
                 std::size_t gid = e * ndof + vtk_id;
 
-                // 坐标
                 points[3 * gid + 0] = coord_host(ie, je, ke, dg_id, 0);
                 points[3 * gid + 1] = coord_host(ie, je, ke, dg_id, 1);
                 points[3 * gid + 2] = coord_host(ie, je, ke, dg_id, 2);
 
                 std::array<T, NVARS> cons{};
+
                 for (int v = 0; v < NVARS; ++v) {
                   values[gid * nvars + v] = u_host(ie, je, ke, dg_id, v);
                   cons[v] = values[gid * nvars + v];
                 }
 
-                auto prim = DGSEM::utils::cons_to_prim(cons, 1.4);
-
-                values[gid * nvars + NVARS] = prim[4];
+                if constexpr (is_euler) {
+                  auto prim = DGSEM::utils::cons_to_prim(cons, 1.4);
+                  values[gid * nvars + NVARS] = prim[4]; // pressure
+                }
               }
         }
 
