@@ -78,6 +78,27 @@ struct scalar_node_type_traits<T, 3> {
   using ScalarArrayHost = ScalarArray::HostMirror;
 };
 
+template <class T, std::size_t NDIMS>
+struct node_vector_field_type_traits {};
+
+template <class T>
+struct node_vector_field_type_traits<T, 1> {
+  using DataArray = Kokkos::View<T****, Device>;
+  using DataArrayHost = DataArray::HostMirror;
+};
+
+template <class T>
+struct node_vector_field_type_traits<T, 2> {
+  using DataArray = Kokkos::View<T*****, Device>;
+  using DataArrayHost = DataArray::HostMirror;
+};
+
+template <class T>
+struct node_vector_field_type_traits<T, 3> {
+  using DataArray = Kokkos::View<T******, Device>;
+  using DataArrayHost = DataArray::HostMirror;
+};
+
 template <std::size_t NDIMS>
 struct index_type_traits {};
 

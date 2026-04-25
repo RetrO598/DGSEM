@@ -1,5 +1,6 @@
 #pragma once
 
+#include <space_integral/parabolic_br1.hpp>
 #include <space_integral/jacobian.hpp>
 #include <space_integral/surface_flux.hpp>
 #include <space_integral/surface_flux_functor.hpp>

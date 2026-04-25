@@ -67,6 +67,45 @@ public:
 
   void calc_surface_integral(solution& sol);
 
+  void calc_gradient_volume_integral(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void transform_gradient_to_physical(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_gradient_interface_flux(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_gradient_surface_integral(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void apply_gradient_jacobian(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_gradients(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_viscous_flux(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_viscous_volume_integral(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_viscous_interface_flux(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_viscous_surface_integral(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void apply_viscous_jacobian(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void accumulate_viscous_rhs(solution& sol)
+    requires ParabolicEquations<Equations>;
+
+  void calc_viscous_rhs(solution& sol)
+    requires ParabolicEquations<Equations>;
+
   void apply_boundary_condition(solution& sol, value_type time);
 
   void apply_jacobian(solution& sol);
@@ -175,6 +214,179 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_gradient_volume_integral(
+    solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  Kokkos::deep_copy(sol.gradient_reference_device, value_type{0.0});
+  GradientVolumeIntegralFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      sol.u_device, sol.gradient_reference_device, eq, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::transform_gradient_to_physical(
+    solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  GradientPhysicalTransformFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      sol.gradient_reference_device, sol.gradient_device,
+      element.contravariant_vectors_device, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_gradient_interface_flux(
+    solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  Kokkos::deep_copy(sol.gradient_surface_flux_device, value_type{0.0});
+  GradientInterfaceFluxFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      element.left_neighbors_device, eq, sol.u_device,
+      sol.gradient_surface_flux_device, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_gradient_surface_integral(
+    solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  GradientSurfaceIntegralFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      sol.gradient_device, sol.gradient_surface_flux_device,
+      element.contravariant_vectors_device, element.inverse_jacobian_device,
+      n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::apply_gradient_jacobian(solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  GradientJacobianProjFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      sol.gradient_device, element.inverse_jacobian_device, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_gradients(solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  Kokkos::deep_copy(sol.gradient_device, value_type{0.0});
+  calc_gradient_volume_integral(sol);
+  transform_gradient_to_physical(sol);
+  calc_gradient_interface_flux(sol);
+  calc_gradient_surface_integral(sol);
+  apply_gradient_jacobian(sol);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_viscous_flux(solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  ViscousFluxFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      sol.u_device, sol.gradient_device, sol.viscous_flux_device, eq, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_viscous_volume_integral(
+    solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  ViscousVolumeIntegralFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      sol.viscous_du_device, sol.viscous_flux_device,
+      element.contravariant_vectors_device, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_viscous_interface_flux(
+    solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  Kokkos::deep_copy(sol.viscous_surface_flux_value_device, value_type{0.0});
+  ViscousInterfaceFluxFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      element.left_neighbors_device, sol.viscous_flux_device,
+      sol.viscous_surface_flux_value_device, element.contravariant_vectors_device,
+      element.inverse_jacobian_device, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_viscous_surface_integral(
+    solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  SurfaceIntegralFunctor<Basis, Equations, ElementCache, NDIMS>::apply(
+      sol.viscous_du_device, sol.viscous_surface_flux_value_device, eq, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::apply_viscous_jacobian(solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  ParabolicJacobianProjFunctor<value_type, Basis, Equations, NDIMS>::apply(
+      sol.viscous_du_device, element.inverse_jacobian_device, n_cells);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::accumulate_viscous_rhs(solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  static_assert(NDIMS == 3,
+                "Parabolic accumulation is currently implemented for 3D only.");
+  auto du = sol.du_device;
+  auto viscous_du = sol.viscous_du_device;
+  const std::size_t ndofs = n_dofs;
+  Kokkos::parallel_for(
+      "accumulate_viscous_rhs",
+      Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+          {0, 0, 0}, {n_cells[0], n_cells[1], n_cells[2]}),
+      KOKKOS_LAMBDA(const std::size_t ielem, const std::size_t jelem,
+                    const std::size_t kelem) {
+        for (std::size_t dof = 0; dof < ndofs; ++dof) {
+          for (std::size_t var = 0; var < NVARS; ++var) {
+            du(ielem, jelem, kelem, dof, var) +=
+                viscous_du(ielem, jelem, kelem, dof, var);
+          }
+        }
+      });
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_viscous_rhs(solution& sol)
+  requires ParabolicEquations<Equations>
+{
+  Kokkos::deep_copy(sol.viscous_du_device, value_type{0.0});
+  calc_gradients(sol);
+  calc_viscous_flux(sol);
+  calc_viscous_volume_integral(sol);
+  calc_viscous_interface_flux(sol);
+  calc_viscous_surface_integral(sol);
+  apply_viscous_jacobian(sol);
+  accumulate_viscous_rhs(sol);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::apply_boundary_condition(solution& sol,
                                                                  value_type
                                                                      time) {
@@ -216,6 +428,10 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
   calc_surface_integral(sol);
 
   apply_jacobian(sol);
+
+  if constexpr (ParabolicEquations<Equations>) {
+    calc_viscous_rhs(sol);
+  }
 }
 
 } // namespace DGSEM
