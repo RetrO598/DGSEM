@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <dgsem.hpp>
 #include <numbers>
+#include <ostream>
 
 template <class T>
 struct TaylorGreenVortex3D
@@ -21,13 +22,16 @@ struct TaylorGreenVortex3D
     const T y = coordinate[1];
     const T z = coordinate[2];
 
+    const T csp = std::sqrt(1.4 * 287.0 * 273.15);
+    const T u0 = 0.1 * csp;
+
     const T rho = 1.0;
-    const T v1 = std::sin(x) * std::cos(y) * std::cos(z);
-    const T v2 = -std::cos(x) * std::sin(y) * std::cos(z);
+    const T v1 = u0 * std::sin(x) * std::cos(y) * std::cos(z);
+    const T v2 = -u0 * std::cos(x) * std::sin(y) * std::cos(z);
     const T v3 = 0.0;
     const T p =
-        static_cast<T>(100.0 / 1.4) +
-        static_cast<T>(1.0 / 16.0) *
+        static_cast<T>(287.0 * 273.15) +
+        static_cast<T>(u0 * u0 / 16.0) *
             (std::cos(2.0 * x) * std::cos(2.0 * z) + 2.0 * std::cos(2.0 * y) +
              2.0 * std::cos(2.0 * x) + std::cos(2.0 * y) * std::cos(2.0 * z));
 
@@ -48,10 +52,14 @@ int main() {
         DGSEM::VolumeIntegralSplitForm<MyBasis, Eq, DGSEM::ChandrashekarFlux>;
     using Mesh = DGSEM::StructuredMesh<value_type, 3>;
 
-    constexpr value_type gamma = 1.4;
-    constexpr value_type reynolds = 1600.0;
-    constexpr value_type mu = 1.0 / reynolds;
-    constexpr value_type prandtl = 0.72;
+    const value_type Ma = 0.1;
+    const value_type R = 287.0;
+    const value_type gamma = 1.4;
+    const value_type csp = std::sqrt(gamma * R * 273.15);
+    const value_type u0 = Ma * csp;
+    const value_type reynolds = 1600.0;
+    const value_type mu = u0 / reynolds;
+    const value_type prandtl = 0.72;
 
     MyBasis::initialize();
 
@@ -64,10 +72,12 @@ int main() {
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     using DGSEM::PrintObserver;
 
-    const std::size_t nx = 8;
-    const std::size_t ny = 8;
-    const std::size_t nz = 8;
-    const value_type t_final = 3.0;
+    const std::size_t nx = 32;
+    const std::size_t ny = 32;
+    const std::size_t nz = 32;
+    const value_type t_final = 0.1 / u0;
+
+    std::cout << "t final: " << t_final << std::endl;
 
     const std::array<value_type, 3> domain_left = {0.0, 0.0, 0.0};
     const std::array<value_type, 3> domain_right = {
@@ -97,16 +107,28 @@ int main() {
     const value_type dx = (domain_right[0] - domain_left[0]) / nx;
     const value_type dy = (domain_right[1] - domain_left[1]) / ny;
     const value_type dz = (domain_right[2] - domain_left[2]) / nz;
-    const value_type max_speed = 2.0;
+    const value_type max_speed = (u0 + csp);
     const value_type dt =
         cfl * std::min({dx, dy, dz}) / max_speed / (3.0 * (2 * order + 1));
 
+    std::cout << "dt: " << dt << std::endl;
+
     TimeIntegrator time_integrator(sol, mesh, t_final);
 
-    time_integrator.add_observer(std::make_unique<PrintObserver>(20));
-    time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
-        "navier_stokes_tgv_re1600", sol, container.node_coordinates, n_cells,
-        100));
+    // using static_analyzer =
+    //     DGSEM::AnalyzerWrapper<MyBasis, Eq, DGSEM::VolumeAverageEuler<Eq>>;
+
+    // static_analyzer analyzer_statics;
+
+    time_integrator.add_observer(std::make_unique<PrintObserver>(1000));
+    // time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
+    //     "navier_stokes_tgv_re1600", sol, container.node_coordinates, n_cells,
+    //     1000));
+
+    // time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+    //     DGSEM::VolumeWeightedAnalysisTag{}, analyzer_statics, sol, container,
+    //     n_cells, DGSEM::VolumeAverageCsvWriter<Eq>("static.csv")));
+
     time_integrator.solve(solver, sol, dt);
 
     MyBasis::finalize();

@@ -199,7 +199,8 @@ public:
                 }
 
                 if constexpr (is_euler or is_navier_stokes) {
-                  auto prim = DGSEM::utils::cons_to_prim(cons, 1.4);
+                  auto prim =
+                      DGSEM::utils::cons_to_prim(cons, static_cast<T>(1.4));
                   values[gid * nvars + NVARS] = prim[4]; // pressure
                 }
               }

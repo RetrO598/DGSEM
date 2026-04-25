@@ -14,6 +14,7 @@ class CompressibleNavierStokes3D : public Equations3DBase {
 public:
   using value_type = T;
 
+  KOKKOS_INLINE_FUNCTION
   explicit CompressibleNavierStokes3D(
       const T& gamma = static_cast<T>(1.4),
       const T& dynamic_viscosity = static_cast<T>(6.25e-4),
@@ -93,18 +94,15 @@ public:
     const value_type dv3dz = grad_q[2][3];
     const value_type dTdz = grad_q[2][4];
 
-    const value_type tau11 =
-        (static_cast<value_type>(4.0) * dv1dx -
-         static_cast<value_type>(2.0) * (dv2dy + dv3dz)) /
-        static_cast<value_type>(3.0);
-    const value_type tau22 =
-        (static_cast<value_type>(4.0) * dv2dy -
-         static_cast<value_type>(2.0) * (dv1dx + dv3dz)) /
-        static_cast<value_type>(3.0);
-    const value_type tau33 =
-        (static_cast<value_type>(4.0) * dv3dz -
-         static_cast<value_type>(2.0) * (dv1dx + dv2dy)) /
-        static_cast<value_type>(3.0);
+    const value_type tau11 = (static_cast<value_type>(4.0) * dv1dx -
+                              static_cast<value_type>(2.0) * (dv2dy + dv3dz)) /
+                             static_cast<value_type>(3.0);
+    const value_type tau22 = (static_cast<value_type>(4.0) * dv2dy -
+                              static_cast<value_type>(2.0) * (dv1dx + dv3dz)) /
+                             static_cast<value_type>(3.0);
+    const value_type tau33 = (static_cast<value_type>(4.0) * dv3dz -
+                              static_cast<value_type>(2.0) * (dv1dx + dv2dy)) /
+                             static_cast<value_type>(3.0);
     const value_type tau12 = dv1dy + dv2dx;
     const value_type tau13 = dv1dz + dv3dx;
     const value_type tau23 = dv2dz + dv3dy;
@@ -115,16 +113,13 @@ public:
 
     if (dim == 0) {
       return {static_cast<value_type>(0.0), mu_ * tau11, mu_ * tau12,
-              mu_ * tau13,
-              mu_ * (v1 * tau11 + v2 * tau12 + v3 * tau13 + q1)};
+              mu_ * tau13, mu_ * (v1 * tau11 + v2 * tau12 + v3 * tau13 + q1)};
     } else if (dim == 1) {
       return {static_cast<value_type>(0.0), mu_ * tau12, mu_ * tau22,
-              mu_ * tau23,
-              mu_ * (v1 * tau12 + v2 * tau22 + v3 * tau23 + q2)};
+              mu_ * tau23, mu_ * (v1 * tau12 + v2 * tau22 + v3 * tau23 + q2)};
     }
 
-    return {static_cast<value_type>(0.0), mu_ * tau13, mu_ * tau23,
-            mu_ * tau33,
+    return {static_cast<value_type>(0.0), mu_ * tau13, mu_ * tau23, mu_ * tau33,
             mu_ * (v1 * tau13 + v2 * tau23 + v3 * tau33 + q3)};
   }
 
