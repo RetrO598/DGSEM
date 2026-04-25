@@ -64,9 +64,9 @@ int main() {
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     using DGSEM::PrintObserver;
 
-    const std::size_t nx = 64;
-    const std::size_t ny = 64;
-    const std::size_t nz = 64;
+    const std::size_t nx = 8;
+    const std::size_t ny = 8;
+    const std::size_t nz = 8;
     const value_type t_final = 3.0;
 
     const std::array<value_type, 3> domain_left = {0.0, 0.0, 0.0};
