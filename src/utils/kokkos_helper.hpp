@@ -19,8 +19,11 @@ void clone_view_shape(ViewType& dst, const ViewType& src) {
   } else if constexpr (ViewType::rank == 5) {
     Kokkos::realloc(dst, src.extent(0), src.extent(1), src.extent(2),
                     src.extent(3), src.extent(4));
+  } else if constexpr (ViewType::rank == 6) {
+    Kokkos::realloc(dst, src.extent(0), src.extent(1), src.extent(2),
+                    src.extent(3), src.extent(4), src.extent(5));
   } else {
-    static_assert(ViewType::rank <= 4, "Unsupported rank");
+    static_assert(ViewType::rank <= 6, "Unsupported rank");
   }
 
   Kokkos::deep_copy(dst, typename ViewType::value_type{0.0});

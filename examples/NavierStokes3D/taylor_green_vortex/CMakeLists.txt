@@ -1,0 +1,2 @@
+add_executable(navier_stokes_tgv_re1600 taylor_green_vortex.cpp)
+target_link_libraries(navier_stokes_tgv_re1600 PRIVATE dgsem)
