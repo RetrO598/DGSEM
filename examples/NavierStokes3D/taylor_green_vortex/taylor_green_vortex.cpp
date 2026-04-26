@@ -72,10 +72,10 @@ int main() {
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     using DGSEM::PrintObserver;
 
-    const std::size_t nx = 32;
-    const std::size_t ny = 32;
-    const std::size_t nz = 32;
-    const value_type t_final = 0.1 / u0;
+    const std::size_t nx = 8;
+    const std::size_t ny = 8;
+    const std::size_t nz = 8;
+    const value_type t_final = 1.0 / u0;
 
     std::cout << "t final: " << t_final << std::endl;
 

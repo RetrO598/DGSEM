@@ -23,7 +23,8 @@ struct ParabolicEquationInfo {
 };
 
 template <class Equations>
-struct ParabolicEquationInfo<Equations, std::void_t<decltype(Equations::NGRAD_VARS)>> {
+struct ParabolicEquationInfo<Equations,
+                             std::void_t<decltype(Equations::NGRAD_VARS)>> {
   constexpr static bool enabled = true;
   constexpr static std::size_t ngrad_vars = Equations::NGRAD_VARS;
 };
@@ -90,8 +91,7 @@ struct SolutionInitializer<T, NVARS, 3> {
   inline constexpr static void
   initialize_u(const std::array<std::size_t, 3>& n_cells, std::size_t ndofs,
                DataArray& u_device) {
-    Kokkos::realloc(u_device, n_cells[0], n_cells[1], n_cells[2], ndofs,
-                    NVARS);
+    Kokkos::realloc(u_device, n_cells[0], n_cells[1], n_cells[2], ndofs, NVARS);
     Kokkos::deep_copy(u_device, T{0.0});
   }
 
@@ -116,9 +116,10 @@ template <class T>
 struct NodeVectorFieldInitializer<T, 1> {
   using DataArray = typename node_vector_field_type_traits<T, 1>::DataArray;
 
-  inline constexpr static void initialize(
-      const std::array<std::size_t, 1>& n_cells, std::size_t nnodes,
-      std::size_t nvars, std::size_t ncomponents, DataArray& data_device) {
+  inline constexpr static void
+  initialize(const std::array<std::size_t, 1>& n_cells, std::size_t nnodes,
+             std::size_t nvars, std::size_t ncomponents,
+             DataArray& data_device) {
     Kokkos::realloc(data_device, n_cells[0], nnodes, nvars, ncomponents);
     Kokkos::deep_copy(data_device, T{0.0});
   }
@@ -128,9 +129,10 @@ template <class T>
 struct NodeVectorFieldInitializer<T, 2> {
   using DataArray = typename node_vector_field_type_traits<T, 2>::DataArray;
 
-  inline constexpr static void initialize(
-      const std::array<std::size_t, 2>& n_cells, std::size_t ndofs,
-      std::size_t nvars, std::size_t ncomponents, DataArray& data_device) {
+  inline constexpr static void
+  initialize(const std::array<std::size_t, 2>& n_cells, std::size_t ndofs,
+             std::size_t nvars, std::size_t ncomponents,
+             DataArray& data_device) {
     Kokkos::realloc(data_device, n_cells[0], n_cells[1], ndofs, nvars,
                     ncomponents);
     Kokkos::deep_copy(data_device, T{0.0});
@@ -141,9 +143,10 @@ template <class T>
 struct NodeVectorFieldInitializer<T, 3> {
   using DataArray = typename node_vector_field_type_traits<T, 3>::DataArray;
 
-  inline constexpr static void initialize(
-      const std::array<std::size_t, 3>& n_cells, std::size_t ndofs,
-      std::size_t nvars, std::size_t ncomponents, DataArray& data_device) {
+  inline constexpr static void
+  initialize(const std::array<std::size_t, 3>& n_cells, std::size_t ndofs,
+             std::size_t nvars, std::size_t ncomponents,
+             DataArray& data_device) {
     Kokkos::realloc(data_device, n_cells[0], n_cells[1], n_cells[2], ndofs,
                     nvars, ncomponents);
     Kokkos::deep_copy(data_device, T{0.0});
@@ -190,8 +193,8 @@ struct Solution {
     if constexpr (HasParabolicTerms) {
       detail::NodeVectorFieldInitializer<value_type, NDIMS>::initialize(
           n_cells, ndofs, NGRAD_VARS, NDIMS, gradient_device);
-      detail::NodeVectorFieldInitializer<value_type, NDIMS>::initialize(
-          n_cells, ndofs, NGRAD_VARS, NDIMS, gradient_reference_device);
+      // detail::NodeVectorFieldInitializer<value_type, NDIMS>::initialize(
+      //     n_cells, ndofs, NGRAD_VARS, NDIMS, gradient_reference_device);
       detail::NodeVectorFieldInitializer<value_type, NDIMS>::initialize(
           n_cells, ndofs, NVARS, NDIMS, viscous_flux_device);
       detail::SolutionInitializer<value_type, NGRAD_VARS, NDIMS>::
@@ -216,8 +219,8 @@ struct Solution {
 
     if constexpr (HasParabolicTerms) {
       DGSEM::utils::clone_view_shape(tmp.gradient_device, gradient_device);
-      DGSEM::utils::clone_view_shape(tmp.gradient_reference_device,
-                                     gradient_reference_device);
+      // DGSEM::utils::clone_view_shape(tmp.gradient_reference_device,
+      //                                gradient_reference_device);
       DGSEM::utils::clone_view_shape(tmp.viscous_flux_device,
                                      viscous_flux_device);
       DGSEM::utils::clone_view_shape(tmp.gradient_surface_flux_device,
@@ -234,7 +237,7 @@ struct Solution {
   DataArray viscous_du_device;
   DataArray surface_flux_value_device;
   VectorFieldArray gradient_device;
-  VectorFieldArray gradient_reference_device;
+  // VectorFieldArray gradient_reference_device;
   VectorFieldArray viscous_flux_device;
   DataArray gradient_surface_flux_device;
   DataArray viscous_surface_flux_value_device;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <cmath>
 #include <cstddef>
 #include <equations/compressible_euler3D.hpp>
 #include <equations/equations_base.hpp>
