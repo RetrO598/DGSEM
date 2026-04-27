@@ -124,41 +124,76 @@ struct GradientPhysicalTransformFunctor<T, Basis, Equations, 3> {
                     MetricArray contravariant_vectors_,
                     const std::array<std::size_t, 3>& n_elems_) {
     GradientPhysicalTransformFunctor functor(gradient_, contravariant_vectors_);
-    Kokkos::parallel_for(
-        "gradient_transform",
-        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
-        functor);
+    Kokkos::parallel_for("gradient_transform",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
+                                         n_elems_[1] * Basis::NNodes,
+                                         n_elems_[2] * Basis::NNodes}),
+                         functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
-                                         const std::size_t& jelem,
-                                         const std::size_t& kelem) const {
-    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
+                                         const std::size_t& jdof,
+                                         const std::size_t& kdof) const {
+    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
+    // Basis::NNodes;
 
-    for (std::size_t dof = 0; dof < ndofs; ++dof) {
-      const T ja11 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 0);
-      const T ja12 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 1);
-      const T ja13 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 2);
-      const T ja21 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 0);
-      const T ja22 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 1);
-      const T ja23 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 2);
-      const T ja31 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 0);
-      const T ja32 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 1);
-      const T ja33 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 2);
+    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
+    //   const T ja11 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 0);
+    //   const T ja12 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 1);
+    //   const T ja13 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 2);
+    //   const T ja21 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 0);
+    //   const T ja22 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 1);
+    //   const T ja23 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 2);
+    //   const T ja31 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 0);
+    //   const T ja32 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 1);
+    //   const T ja33 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 2);
 
-      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
-        const T ref_xi = gradient(ielem, jelem, kelem, dof, var, 0);
-        const T ref_eta = gradient(ielem, jelem, kelem, dof, var, 1);
-        const T ref_zeta = gradient(ielem, jelem, kelem, dof, var, 2);
+    //   for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+    //     const T ref_xi = gradient(ielem, jelem, kelem, dof, var, 0);
+    //     const T ref_eta = gradient(ielem, jelem, kelem, dof, var, 1);
+    //     const T ref_zeta = gradient(ielem, jelem, kelem, dof, var, 2);
 
-        gradient(ielem, jelem, kelem, dof, var, 0) =
-            ja11 * ref_xi + ja21 * ref_eta + ja31 * ref_zeta;
-        gradient(ielem, jelem, kelem, dof, var, 1) =
-            ja12 * ref_xi + ja22 * ref_eta + ja32 * ref_zeta;
-        gradient(ielem, jelem, kelem, dof, var, 2) =
-            ja13 * ref_xi + ja23 * ref_eta + ja33 * ref_zeta;
-      }
+    //     gradient(ielem, jelem, kelem, dof, var, 0) =
+    //         ja11 * ref_xi + ja21 * ref_eta + ja31 * ref_zeta;
+    //     gradient(ielem, jelem, kelem, dof, var, 1) =
+    //         ja12 * ref_xi + ja22 * ref_eta + ja32 * ref_zeta;
+    //     gradient(ielem, jelem, kelem, dof, var, 2) =
+    //         ja13 * ref_xi + ja23 * ref_eta + ja33 * ref_zeta;
+    //   }
+    // }
+
+    const std::size_t ielem = idof / Basis::NNodes;
+    const std::size_t jelem = jdof / Basis::NNodes;
+    const std::size_t kelem = kdof / Basis::NNodes;
+    const std::size_t node_i = idof % Basis::NNodes;
+    const std::size_t node_j = jdof % Basis::NNodes;
+    const std::size_t node_k = kdof % Basis::NNodes;
+
+    const std::size_t dof =
+        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
+
+    const T ja11 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 0);
+    const T ja12 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 1);
+    const T ja13 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 2);
+    const T ja21 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 0);
+    const T ja22 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 1);
+    const T ja23 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 2);
+    const T ja31 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 0);
+    const T ja32 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 1);
+    const T ja33 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 2);
+
+    for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+      const T ref_xi = gradient(ielem, jelem, kelem, dof, var, 0);
+      const T ref_eta = gradient(ielem, jelem, kelem, dof, var, 1);
+      const T ref_zeta = gradient(ielem, jelem, kelem, dof, var, 2);
+
+      gradient(ielem, jelem, kelem, dof, var, 0) =
+          ja11 * ref_xi + ja21 * ref_eta + ja31 * ref_zeta;
+      gradient(ielem, jelem, kelem, dof, var, 1) =
+          ja12 * ref_xi + ja22 * ref_eta + ja32 * ref_zeta;
+      gradient(ielem, jelem, kelem, dof, var, 2) =
+          ja13 * ref_xi + ja23 * ref_eta + ja33 * ref_zeta;
     }
   }
 
@@ -466,25 +501,37 @@ struct GradientJacobianProjFunctor<T, Basis, Equations, 3> {
   static void apply(VectorFieldArray gradient_, ScalarArray inverse_jacobian_,
                     const std::array<std::size_t, 3>& n_elems_) {
     GradientJacobianProjFunctor functor(gradient_, inverse_jacobian_);
-    Kokkos::parallel_for(
-        "gradient_jacobian_proj",
-        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
-        functor);
+    Kokkos::parallel_for("gradient_jacobian_proj",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
+                                         n_elems_[1] * Basis::NNodes,
+                                         n_elems_[2] * Basis::NNodes}),
+                         functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
-                                         const std::size_t& jelem,
-                                         const std::size_t& kelem) const {
-    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
-    for (std::size_t dof = 0; dof < ndofs; ++dof) {
-      const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
-      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
-        for (std::size_t dim = 0; dim < 3; ++dim) {
-          gradient(ielem, jelem, kelem, dof, var, dim) *= factor;
-        }
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
+                                         const std::size_t& jdof,
+                                         const std::size_t& kdof) const {
+    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
+    // Basis::NNodes;
+
+    const std::size_t ielem = idof / Basis::NNodes;
+    const std::size_t jelem = jdof / Basis::NNodes;
+    const std::size_t kelem = kdof / Basis::NNodes;
+    const std::size_t node_i = idof % Basis::NNodes;
+    const std::size_t node_j = jdof % Basis::NNodes;
+    const std::size_t node_k = kdof % Basis::NNodes;
+    const std::size_t dof =
+        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
+
+    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
+    const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
+    for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+      for (std::size_t dim = 0; dim < 3; ++dim) {
+        gradient(ielem, jelem, kelem, dof, var, dim) *= factor;
       }
     }
+    // }
   }
 
   VectorFieldArray gradient;
@@ -509,38 +556,54 @@ struct ViscousFluxFunctor<T, Basis, Equations, 3> {
                     VectorFieldArray viscous_flux_, const Equations& eq_,
                     const std::array<std::size_t, 3>& n_elems_) {
     ViscousFluxFunctor functor(u_, gradient_, viscous_flux_, eq_);
-    Kokkos::parallel_for(
-        "viscous_flux",
-        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
-        functor);
+    Kokkos::parallel_for("viscous_flux",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
+                                         n_elems_[1] * Basis::NNodes,
+                                         n_elems_[2] * Basis::NNodes}),
+                         functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
-                                         const std::size_t& jelem,
-                                         const std::size_t& kelem) const {
-    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
-    for (std::size_t dof = 0; dof < ndofs; ++dof) {
-      std::array<T, traits::NVARS> state{};
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
+                                         const std::size_t& jdof,
+                                         const std::size_t& kdof) const {
+    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
+    // Basis::NNodes;
+    const std::size_t ielem = idof / Basis::NNodes;
+    const std::size_t jelem = jdof / Basis::NNodes;
+    const std::size_t kelem = kdof / Basis::NNodes;
+    const std::size_t node_i = idof % Basis::NNodes;
+    const std::size_t node_j = jdof % Basis::NNodes;
+    const std::size_t node_k = kdof % Basis::NNodes;
+    const std::size_t dof =
+        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
+
+    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
+    std::array<T, traits::NVARS> state{};
+    for (std::size_t var = 0; var < traits::NVARS; ++var) {
+      state[var] = u(ielem, jelem, kelem, dof, var);
+    }
+    const auto q = eq.gradient_variables(state);
+
+    std::array<std::array<T, Equations::NGRAD_VARS>, 3> grad_q{};
+    for (std::size_t dim = 0; dim < 3; ++dim) {
+      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+        grad_q[dim][var] = gradient(ielem, jelem, kelem, dof, var, dim);
+      }
+
+      const auto flux = eq.viscous_flux(q, grad_q, dim);
       for (std::size_t var = 0; var < traits::NVARS; ++var) {
-        state[var] = u(ielem, jelem, kelem, dof, var);
-      }
-      const auto q = eq.gradient_variables(state);
-
-      std::array<std::array<T, Equations::NGRAD_VARS>, 3> grad_q{};
-      for (std::size_t dim = 0; dim < 3; ++dim) {
-        for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
-          grad_q[dim][var] = gradient(ielem, jelem, kelem, dof, var, dim);
-        }
-      }
-
-      for (std::size_t dim = 0; dim < 3; ++dim) {
-        const auto flux = eq.viscous_flux(q, grad_q, dim);
-        for (std::size_t var = 0; var < traits::NVARS; ++var) {
-          viscous_flux(ielem, jelem, kelem, dof, var, dim) = flux[var];
-        }
+        viscous_flux(ielem, jelem, kelem, dof, var, dim) = flux[var];
       }
     }
+
+    // for (std::size_t dim = 0; dim < 3; ++dim) {
+    //   const auto flux = eq.viscous_flux(q, grad_q, dim);
+    //   for (std::size_t var = 0; var < traits::NVARS; ++var) {
+    //     viscous_flux(ielem, jelem, kelem, dof, var, dim) = flux[var];
+    //   }
+    // }
+    // }
   }
 
   DataArray u;
@@ -840,23 +903,33 @@ struct ParabolicJacobianProjFunctor<T, Basis, Equations, 3> {
   static void apply(DataArray du_, ScalarArray inverse_jacobian_,
                     const std::array<std::size_t, 3>& n_elems_) {
     ParabolicJacobianProjFunctor functor(du_, inverse_jacobian_);
-    Kokkos::parallel_for(
-        "parabolic_jacobian_proj",
-        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
-        functor);
+    Kokkos::parallel_for("parabolic_jacobian_proj",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
+                                         n_elems_[1] * Basis::NNodes,
+                                         n_elems_[2] * Basis::NNodes}),
+                         functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
-                                         const std::size_t& jelem,
-                                         const std::size_t& kelem) const {
-    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
-    for (std::size_t dof = 0; dof < ndofs; ++dof) {
-      const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
-      for (std::size_t var = 0; var < Equations::NVARS; ++var) {
-        du(ielem, jelem, kelem, dof, var) *= factor;
-      }
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
+                                         const std::size_t& jdof,
+                                         const std::size_t& kdof) const {
+    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
+    // Basis::NNodes;
+    const std::size_t ielem = idof / Basis::NNodes;
+    const std::size_t jelem = jdof / Basis::NNodes;
+    const std::size_t kelem = kdof / Basis::NNodes;
+    const std::size_t node_i = idof % Basis::NNodes;
+    const std::size_t node_j = jdof % Basis::NNodes;
+    const std::size_t node_k = kdof % Basis::NNodes;
+    const std::size_t dof =
+        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
+    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
+    const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
+    for (std::size_t var = 0; var < Equations::NVARS; ++var) {
+      du(ielem, jelem, kelem, dof, var) *= factor;
     }
+    // }
   }
 
   DataArray du;
