@@ -115,33 +115,31 @@ int main() {
 
     TimeIntegrator time_integrator(sol, mesh, t_final);
 
-    // using Analyzer =
-    //     DGSEM::AnalyzerWrapper<MyBasis, Eq,
-    //                            DGSEM::DivergenceChecker<value_type,
-    //                            Eq::NVARS>>;
-    // Analyzer analyzer;
+    using Analyzer =
+        DGSEM::AnalyzerWrapper<MyBasis, Eq,
+                               DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
+    Analyzer analyzer;
 
     // using static_analyzer =
     //     DGSEM::AnalyzerWrapper<MyBasis, Eq, DGSEM::VolumeAverageEuler<Eq>>;
 
     // static_analyzer analyzer_statics;
 
-    // time_integrator.add_observer(std::make_unique<PrintObserver>(1000));
+    time_integrator.add_observer(std::make_unique<PrintObserver>(1000));
 
-    // time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
-    //     DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
-    //     DGSEM::StopOnNaN<Eq>()));
+    time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+        DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
+        DGSEM::StopOnNaN<Eq>()));
 
-    // time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
-    //     "navier_stokes_tgv_re1600", sol, container.node_coordinates, n_cells,
-    //     1000));
+    time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
+        "navier_stokes_tgv_re1600", sol, container.node_coordinates, n_cells,
+        1000));
 
     // time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
     //     DGSEM::VolumeWeightedAnalysisTag{}, analyzer_statics, sol, container,
     //     n_cells, DGSEM::VolumeAverageCsvWriter<Eq>("static.csv")));
 
     time_integrator.solve(solver, sol, dt);
-    // solver.calc_rhs(sol, 0.0);
 
     MyBasis::finalize();
   }

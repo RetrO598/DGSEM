@@ -183,9 +183,6 @@ struct Solution {
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_du(
         n_cells, ndofs, du_device);
 
-    // detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_du(
-    //     n_cells, ndofs, viscous_du_device);
-
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::
         initialize_surface_flux_value(n_cells, Basis::NNodes,
                                       surface_flux_value_device);
@@ -193,8 +190,6 @@ struct Solution {
     if constexpr (HasParabolicTerms) {
       detail::NodeVectorFieldInitializer<value_type, NDIMS>::initialize(
           n_cells, ndofs, NGRAD_VARS, NDIMS, gradient_device);
-      // detail::NodeVectorFieldInitializer<value_type, NDIMS>::initialize(
-      //     n_cells, ndofs, NGRAD_VARS, NDIMS, gradient_reference_device);
       detail::NodeVectorFieldInitializer<value_type, NDIMS>::initialize(
           n_cells, ndofs, NVARS, NDIMS, viscous_flux_device);
       detail::SolutionInitializer<value_type, NGRAD_VARS, NDIMS>::
@@ -213,14 +208,11 @@ struct Solution {
 
     DGSEM::utils::clone_view_shape(tmp.u_device, u_device);
     DGSEM::utils::clone_view_shape(tmp.du_device, du_device);
-    // DGSEM::utils::clone_view_shape(tmp.viscous_du_device, viscous_du_device);
     DGSEM::utils::clone_view_shape(tmp.surface_flux_value_device,
                                    surface_flux_value_device);
 
     if constexpr (HasParabolicTerms) {
       DGSEM::utils::clone_view_shape(tmp.gradient_device, gradient_device);
-      // DGSEM::utils::clone_view_shape(tmp.gradient_reference_device,
-      //                                gradient_reference_device);
       DGSEM::utils::clone_view_shape(tmp.viscous_flux_device,
                                      viscous_flux_device);
       DGSEM::utils::clone_view_shape(tmp.gradient_surface_flux_device,
@@ -234,10 +226,8 @@ struct Solution {
 
   DataArray u_device;
   DataArray du_device;
-  // DataArray viscous_du_device;
   DataArray surface_flux_value_device;
   VectorFieldArray gradient_device;
-  // VectorFieldArray gradient_reference_device;
   VectorFieldArray viscous_flux_device;
   DataArray gradient_surface_flux_device;
   DataArray viscous_surface_flux_value_device;

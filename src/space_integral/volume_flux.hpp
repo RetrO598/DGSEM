@@ -262,13 +262,6 @@ struct VolumeIntegralSplit<T, NVARS, NumericFlux, 2> {
           }
         }
 
-        // const std::size_t dof_j =
-        //     DGSEM::utils::local_dof<BasisData::NNodes>(inode, jnode);
-
-        // for (std::size_t var = 0; var < NVARS; ++var) {
-        //   u_node[var] = u(ielem, jelem, dof_j, var);
-        // }
-
         for (std::size_t lnode = jnode + 1; lnode < BasisData::NNodes;
              ++lnode) {
           const std::size_t dof_l =
