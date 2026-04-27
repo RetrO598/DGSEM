@@ -183,8 +183,8 @@ struct Solution {
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_du(
         n_cells, ndofs, du_device);
 
-    detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_du(
-        n_cells, ndofs, viscous_du_device);
+    // detail::SolutionInitializer<value_type, NVARS, NDIMS>::initialize_du(
+    //     n_cells, ndofs, viscous_du_device);
 
     detail::SolutionInitializer<value_type, NVARS, NDIMS>::
         initialize_surface_flux_value(n_cells, Basis::NNodes,
@@ -213,7 +213,7 @@ struct Solution {
 
     DGSEM::utils::clone_view_shape(tmp.u_device, u_device);
     DGSEM::utils::clone_view_shape(tmp.du_device, du_device);
-    DGSEM::utils::clone_view_shape(tmp.viscous_du_device, viscous_du_device);
+    // DGSEM::utils::clone_view_shape(tmp.viscous_du_device, viscous_du_device);
     DGSEM::utils::clone_view_shape(tmp.surface_flux_value_device,
                                    surface_flux_value_device);
 
@@ -234,7 +234,7 @@ struct Solution {
 
   DataArray u_device;
   DataArray du_device;
-  DataArray viscous_du_device;
+  // DataArray viscous_du_device;
   DataArray surface_flux_value_device;
   VectorFieldArray gradient_device;
   // VectorFieldArray gradient_reference_device;

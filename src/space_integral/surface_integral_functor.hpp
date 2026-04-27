@@ -44,11 +44,24 @@ struct SurfaceIntegralFunctor {
     requires(NDIMS == 3)
   {
     SurfaceIntegralFunctor functor(u_, surface_flux_, eq_);
-    Kokkos::parallel_for("surface_integral",
-                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-                             {0, 0, 0},
-                             {n_elems_[0], n_elems_[1], n_elems_[2]}),
-                         functor);
+    Kokkos::parallel_for(
+        "surface_integral",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
+  static void apply(DataArray u_, DataArray surface_flux_, const Equations& eq_,
+                    std::array<std::size_t, NDIMS> n_elems_,
+                    Kokkos::Cuda& stream)
+    requires(NDIMS == 3)
+  {
+    SurfaceIntegralFunctor functor(u_, surface_flux_, eq_);
+    Kokkos::parallel_for(
+        "surface_integral",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
   }
 
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fwd/Kokkos_Fwd_CUDA.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
 #include <base/base.hpp>
@@ -41,29 +42,31 @@ struct VolumeIntegralFunctor {
 
   static void apply(DataArray u_, DataArray du_, const Equations& eq_,
                     const VolumeFlux& flux_,
-                    std::array<std::size_t, NDIMS> n_elems_)
+                    std::array<std::size_t, NDIMS> n_elems_,
+                    Kokkos::Cuda& stream)
     requires(NDIMS == 2)
   {
     VolumeIntegralFunctor functor(u_, du_, eq_, flux_, n_elems_);
 
     Kokkos::parallel_for("volume_integral",
                          Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
-                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                             stream, {0, 0}, {n_elems_[0], n_elems_[1]}),
                          functor);
   }
 
   static void apply(DataArray u_, DataArray du_, const Equations& eq_,
                     const VolumeFlux& flux_,
-                    std::array<std::size_t, NDIMS> n_elems_)
+                    std::array<std::size_t, NDIMS> n_elems_,
+                    Kokkos::Cuda& stream)
     requires(NDIMS == 3)
   {
     VolumeIntegralFunctor functor(u_, du_, eq_, flux_, n_elems_);
 
-    Kokkos::parallel_for("volume_integral",
-                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-                             {0, 0, 0},
-                             {n_elems_[0], n_elems_[1], n_elems_[2]}),
-                         functor);
+    Kokkos::parallel_for(
+        "volume_integral",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
   }
 
   KOKKOS_INLINE_FUNCTION void operator()(const int& ielem) const

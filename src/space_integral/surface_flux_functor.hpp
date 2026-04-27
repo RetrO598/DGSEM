@@ -70,11 +70,11 @@ struct InterfaceFluxFunctor {
   {
     InterfaceFluxFunctor functor(left_neighbors_, contravariant_vectors_,
                                  inverse_jacobian_, eq_, u_, surface_flux_);
-    Kokkos::parallel_for("interface_flux",
-                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-                             {0, 0, 0},
-                             {n_elems_[0], n_elems_[1], n_elems_[2]}),
-                         functor);
+    Kokkos::parallel_for(
+        "interface_flux",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
   }
 
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem) const

@@ -45,7 +45,7 @@ int main() {
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleNavierStokes3D<value_type>;
-    constexpr std::size_t order = 3;
+    constexpr std::size_t order = 4;
     using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, order>;
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux =
@@ -72,10 +72,10 @@ int main() {
     using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     using DGSEM::PrintObserver;
 
-    const std::size_t nx = 8;
-    const std::size_t ny = 8;
-    const std::size_t nz = 8;
-    const value_type t_final = 1.0 / u0;
+    const std::size_t nx = 32;
+    const std::size_t ny = 32;
+    const std::size_t nz = 32;
+    const value_type t_final = 0.1 / u0;
 
     std::cout << "t final: " << t_final << std::endl;
 
@@ -115,12 +115,23 @@ int main() {
 
     TimeIntegrator time_integrator(sol, mesh, t_final);
 
+    // using Analyzer =
+    //     DGSEM::AnalyzerWrapper<MyBasis, Eq,
+    //                            DGSEM::DivergenceChecker<value_type,
+    //                            Eq::NVARS>>;
+    // Analyzer analyzer;
+
     // using static_analyzer =
     //     DGSEM::AnalyzerWrapper<MyBasis, Eq, DGSEM::VolumeAverageEuler<Eq>>;
 
     // static_analyzer analyzer_statics;
 
-    time_integrator.add_observer(std::make_unique<PrintObserver>(1000));
+    // time_integrator.add_observer(std::make_unique<PrintObserver>(1000));
+
+    // time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+    //     DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
+    //     DGSEM::StopOnNaN<Eq>()));
+
     // time_integrator.add_observer(std::make_unique<VTUOutputObserver>(
     //     "navier_stokes_tgv_re1600", sol, container.node_coordinates, n_cells,
     //     1000));
@@ -130,6 +141,7 @@ int main() {
     //     n_cells, DGSEM::VolumeAverageCsvWriter<Eq>("static.csv")));
 
     time_integrator.solve(solver, sol, dt);
+    // solver.calc_rhs(sol, 0.0);
 
     MyBasis::finalize();
   }

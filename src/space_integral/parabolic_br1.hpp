@@ -50,6 +50,18 @@ struct GradientVolumeIntegralFunctor<T, Basis, Equations, 3> {
         functor);
   }
 
+  static void apply(DataArray u_, VectorFieldArray gradient_,
+                    const Equations& eq_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    GradientVolumeIntegralFunctor functor(u_, gradient_, eq_);
+    Kokkos::parallel_for(
+        "gradient_volume_integral",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
                                          const std::size_t& jelem,
                                          const std::size_t& kelem) const {
@@ -124,76 +136,53 @@ struct GradientPhysicalTransformFunctor<T, Basis, Equations, 3> {
                     MetricArray contravariant_vectors_,
                     const std::array<std::size_t, 3>& n_elems_) {
     GradientPhysicalTransformFunctor functor(gradient_, contravariant_vectors_);
-    Kokkos::parallel_for("gradient_transform",
-                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
-                                         n_elems_[1] * Basis::NNodes,
-                                         n_elems_[2] * Basis::NNodes}),
-                         functor);
+    Kokkos::parallel_for(
+        "gradient_transform",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
-                                         const std::size_t& jdof,
-                                         const std::size_t& kdof) const {
-    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
-    // Basis::NNodes;
+  static void apply(VectorFieldArray gradient_,
+                    MetricArray contravariant_vectors_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    GradientPhysicalTransformFunctor functor(gradient_, contravariant_vectors_);
+    Kokkos::parallel_for(
+        "gradient_transform",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
 
-    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
-    //   const T ja11 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 0);
-    //   const T ja12 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 1);
-    //   const T ja13 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 2);
-    //   const T ja21 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 0);
-    //   const T ja22 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 1);
-    //   const T ja23 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 2);
-    //   const T ja31 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 0);
-    //   const T ja32 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 1);
-    //   const T ja33 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 2);
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem,
+                                         const std::size_t& kelem) const {
+    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
 
-    //   for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
-    //     const T ref_xi = gradient(ielem, jelem, kelem, dof, var, 0);
-    //     const T ref_eta = gradient(ielem, jelem, kelem, dof, var, 1);
-    //     const T ref_zeta = gradient(ielem, jelem, kelem, dof, var, 2);
+    for (std::size_t dof = 0; dof < ndofs; ++dof) {
+      const T ja11 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 0);
+      const T ja12 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 1);
+      const T ja13 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 2);
+      const T ja21 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 0);
+      const T ja22 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 1);
+      const T ja23 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 2);
+      const T ja31 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 0);
+      const T ja32 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 1);
+      const T ja33 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 2);
 
-    //     gradient(ielem, jelem, kelem, dof, var, 0) =
-    //         ja11 * ref_xi + ja21 * ref_eta + ja31 * ref_zeta;
-    //     gradient(ielem, jelem, kelem, dof, var, 1) =
-    //         ja12 * ref_xi + ja22 * ref_eta + ja32 * ref_zeta;
-    //     gradient(ielem, jelem, kelem, dof, var, 2) =
-    //         ja13 * ref_xi + ja23 * ref_eta + ja33 * ref_zeta;
-    //   }
-    // }
+      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+        const T ref_xi = gradient(ielem, jelem, kelem, dof, var, 0);
+        const T ref_eta = gradient(ielem, jelem, kelem, dof, var, 1);
+        const T ref_zeta = gradient(ielem, jelem, kelem, dof, var, 2);
 
-    const std::size_t ielem = idof / Basis::NNodes;
-    const std::size_t jelem = jdof / Basis::NNodes;
-    const std::size_t kelem = kdof / Basis::NNodes;
-    const std::size_t node_i = idof % Basis::NNodes;
-    const std::size_t node_j = jdof % Basis::NNodes;
-    const std::size_t node_k = kdof % Basis::NNodes;
-
-    const std::size_t dof =
-        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
-
-    const T ja11 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 0);
-    const T ja12 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 1);
-    const T ja13 = contravariant_vectors(ielem, jelem, kelem, dof, 0, 2);
-    const T ja21 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 0);
-    const T ja22 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 1);
-    const T ja23 = contravariant_vectors(ielem, jelem, kelem, dof, 1, 2);
-    const T ja31 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 0);
-    const T ja32 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 1);
-    const T ja33 = contravariant_vectors(ielem, jelem, kelem, dof, 2, 2);
-
-    for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
-      const T ref_xi = gradient(ielem, jelem, kelem, dof, var, 0);
-      const T ref_eta = gradient(ielem, jelem, kelem, dof, var, 1);
-      const T ref_zeta = gradient(ielem, jelem, kelem, dof, var, 2);
-
-      gradient(ielem, jelem, kelem, dof, var, 0) =
-          ja11 * ref_xi + ja21 * ref_eta + ja31 * ref_zeta;
-      gradient(ielem, jelem, kelem, dof, var, 1) =
-          ja12 * ref_xi + ja22 * ref_eta + ja32 * ref_zeta;
-      gradient(ielem, jelem, kelem, dof, var, 2) =
-          ja13 * ref_xi + ja23 * ref_eta + ja33 * ref_zeta;
+        gradient(ielem, jelem, kelem, dof, var, 0) =
+            ja11 * ref_xi + ja21 * ref_eta + ja31 * ref_zeta;
+        gradient(ielem, jelem, kelem, dof, var, 1) =
+            ja12 * ref_xi + ja22 * ref_eta + ja32 * ref_zeta;
+        gradient(ielem, jelem, kelem, dof, var, 2) =
+            ja13 * ref_xi + ja23 * ref_eta + ja33 * ref_zeta;
+      }
     }
   }
 
@@ -223,6 +212,18 @@ struct GradientInterfaceFluxFunctor<T, Basis, Equations, 3> {
         "gradient_interface_flux",
         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
             {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
+  static void apply(IndexArray neighbors_, const Equations& eq_, DataArray u_,
+                    DataArray surface_flux_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    GradientInterfaceFluxFunctor functor(neighbors_, eq_, u_, surface_flux_);
+    Kokkos::parallel_for(
+        "gradient_interface_flux",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
         functor);
   }
 
@@ -388,6 +389,20 @@ struct GradientSurfaceIntegralFunctor<T, Basis, Equations, 3> {
         functor);
   }
 
+  static void apply(VectorFieldArray gradient_, DataArray surface_flux_,
+                    MetricArray contravariant_vectors_,
+                    ScalarArray inverse_jacobian_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    GradientSurfaceIntegralFunctor functor(
+        gradient_, surface_flux_, contravariant_vectors_, inverse_jacobian_);
+    Kokkos::parallel_for(
+        "gradient_surface_integral",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
   KOKKOS_INLINE_FUNCTION static std::size_t
   face_dof(std::size_t face, std::size_t node_i, std::size_t node_j) {
     return face * Basis::NNodes * Basis::NNodes +
@@ -501,37 +516,36 @@ struct GradientJacobianProjFunctor<T, Basis, Equations, 3> {
   static void apply(VectorFieldArray gradient_, ScalarArray inverse_jacobian_,
                     const std::array<std::size_t, 3>& n_elems_) {
     GradientJacobianProjFunctor functor(gradient_, inverse_jacobian_);
-    Kokkos::parallel_for("gradient_jacobian_proj",
-                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
-                                         n_elems_[1] * Basis::NNodes,
-                                         n_elems_[2] * Basis::NNodes}),
-                         functor);
+    Kokkos::parallel_for(
+        "gradient_jacobian_proj",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
-                                         const std::size_t& jdof,
-                                         const std::size_t& kdof) const {
-    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
-    // Basis::NNodes;
+  static void apply(VectorFieldArray gradient_, ScalarArray inverse_jacobian_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    GradientJacobianProjFunctor functor(gradient_, inverse_jacobian_);
+    Kokkos::parallel_for(
+        "gradient_jacobian_proj",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
 
-    const std::size_t ielem = idof / Basis::NNodes;
-    const std::size_t jelem = jdof / Basis::NNodes;
-    const std::size_t kelem = kdof / Basis::NNodes;
-    const std::size_t node_i = idof % Basis::NNodes;
-    const std::size_t node_j = jdof % Basis::NNodes;
-    const std::size_t node_k = kdof % Basis::NNodes;
-    const std::size_t dof =
-        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
-
-    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
-    const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
-    for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
-      for (std::size_t dim = 0; dim < 3; ++dim) {
-        gradient(ielem, jelem, kelem, dof, var, dim) *= factor;
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem,
+                                         const std::size_t& kelem) const {
+    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
+    for (std::size_t dof = 0; dof < ndofs; ++dof) {
+      const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
+      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+        for (std::size_t dim = 0; dim < 3; ++dim) {
+          gradient(ielem, jelem, kelem, dof, var, dim) *= factor;
+        }
       }
     }
-    // }
   }
 
   VectorFieldArray gradient;
@@ -556,54 +570,50 @@ struct ViscousFluxFunctor<T, Basis, Equations, 3> {
                     VectorFieldArray viscous_flux_, const Equations& eq_,
                     const std::array<std::size_t, 3>& n_elems_) {
     ViscousFluxFunctor functor(u_, gradient_, viscous_flux_, eq_);
-    Kokkos::parallel_for("viscous_flux",
-                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
-                                         n_elems_[1] * Basis::NNodes,
-                                         n_elems_[2] * Basis::NNodes}),
-                         functor);
+    Kokkos::parallel_for(
+        "viscous_flux",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
-                                         const std::size_t& jdof,
-                                         const std::size_t& kdof) const {
-    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
-    // Basis::NNodes;
-    const std::size_t ielem = idof / Basis::NNodes;
-    const std::size_t jelem = jdof / Basis::NNodes;
-    const std::size_t kelem = kdof / Basis::NNodes;
-    const std::size_t node_i = idof % Basis::NNodes;
-    const std::size_t node_j = jdof % Basis::NNodes;
-    const std::size_t node_k = kdof % Basis::NNodes;
-    const std::size_t dof =
-        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
+  static void apply(DataArray u_, VectorFieldArray gradient_,
+                    VectorFieldArray viscous_flux_, const Equations& eq_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    ViscousFluxFunctor functor(u_, gradient_, viscous_flux_, eq_);
+    Kokkos::parallel_for(
+        "viscous_flux",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
 
-    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
-    std::array<T, traits::NVARS> state{};
-    for (std::size_t var = 0; var < traits::NVARS; ++var) {
-      state[var] = u(ielem, jelem, kelem, dof, var);
-    }
-    const auto q = eq.gradient_variables(state);
-
-    std::array<std::array<T, Equations::NGRAD_VARS>, 3> grad_q{};
-    for (std::size_t dim = 0; dim < 3; ++dim) {
-      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
-        grad_q[dim][var] = gradient(ielem, jelem, kelem, dof, var, dim);
-      }
-
-      const auto flux = eq.viscous_flux(q, grad_q, dim);
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem,
+                                         const std::size_t& kelem) const {
+    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
+    for (std::size_t dof = 0; dof < ndofs; ++dof) {
+      std::array<T, traits::NVARS> state{};
       for (std::size_t var = 0; var < traits::NVARS; ++var) {
-        viscous_flux(ielem, jelem, kelem, dof, var, dim) = flux[var];
+        state[var] = u(ielem, jelem, kelem, dof, var);
+      }
+      const auto q = eq.gradient_variables(state);
+
+      std::array<std::array<T, Equations::NGRAD_VARS>, 3> grad_q{};
+      for (std::size_t dim = 0; dim < 3; ++dim) {
+        for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+          grad_q[dim][var] = gradient(ielem, jelem, kelem, dof, var, dim);
+        }
+      }
+
+      for (std::size_t dim = 0; dim < 3; ++dim) {
+        const auto flux = eq.viscous_flux(q, grad_q, dim);
+        for (std::size_t var = 0; var < traits::NVARS; ++var) {
+          viscous_flux(ielem, jelem, kelem, dof, var, dim) = flux[var];
+        }
       }
     }
-
-    // for (std::size_t dim = 0; dim < 3; ++dim) {
-    //   const auto flux = eq.viscous_flux(q, grad_q, dim);
-    //   for (std::size_t var = 0; var < traits::NVARS; ++var) {
-    //     viscous_flux(ielem, jelem, kelem, dof, var, dim) = flux[var];
-    //   }
-    // }
-    // }
   }
 
   DataArray u;
@@ -638,6 +648,19 @@ struct ViscousVolumeIntegralFunctor<T, Basis, Equations, 3> {
         "viscous_volume_integral",
         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
             {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
+  static void apply(DataArray du_, VectorFieldArray viscous_flux_,
+                    MetricArray contravariant_vectors_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    ViscousVolumeIntegralFunctor functor(du_, viscous_flux_,
+                                         contravariant_vectors_);
+    Kokkos::parallel_for(
+        "viscous_volume_integral",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
         functor);
   }
 
@@ -742,6 +765,21 @@ struct ViscousInterfaceFluxFunctor<T, Basis, Equations, 3> {
         "viscous_interface_flux",
         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
             {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
+  static void apply(IndexArray neighbors_, VectorFieldArray viscous_flux_,
+                    DataArray surface_flux_, MetricArray contravariant_vectors_,
+                    ScalarArray inverse_jacobian_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    ViscousInterfaceFluxFunctor functor(neighbors_, viscous_flux_,
+                                        surface_flux_, contravariant_vectors_,
+                                        inverse_jacobian_);
+    Kokkos::parallel_for(
+        "viscous_interface_flux",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
         functor);
   }
 
@@ -903,33 +941,34 @@ struct ParabolicJacobianProjFunctor<T, Basis, Equations, 3> {
   static void apply(DataArray du_, ScalarArray inverse_jacobian_,
                     const std::array<std::size_t, 3>& n_elems_) {
     ParabolicJacobianProjFunctor functor(du_, inverse_jacobian_);
-    Kokkos::parallel_for("parabolic_jacobian_proj",
-                         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-                             {0, 0, 0}, {n_elems_[0] * Basis::NNodes,
-                                         n_elems_[1] * Basis::NNodes,
-                                         n_elems_[2] * Basis::NNodes}),
-                         functor);
+    Kokkos::parallel_for(
+        "parabolic_jacobian_proj",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
   }
 
-  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& idof,
-                                         const std::size_t& jdof,
-                                         const std::size_t& kdof) const {
-    // constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
-    // Basis::NNodes;
-    const std::size_t ielem = idof / Basis::NNodes;
-    const std::size_t jelem = jdof / Basis::NNodes;
-    const std::size_t kelem = kdof / Basis::NNodes;
-    const std::size_t node_i = idof % Basis::NNodes;
-    const std::size_t node_j = jdof % Basis::NNodes;
-    const std::size_t node_k = kdof % Basis::NNodes;
-    const std::size_t dof =
-        DGSEM::utils::local_dof<Basis::NNodes>(node_i, node_j, node_k);
-    // for (std::size_t dof = 0; dof < ndofs; ++dof) {
-    const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
-    for (std::size_t var = 0; var < Equations::NVARS; ++var) {
-      du(ielem, jelem, kelem, dof, var) *= factor;
+  static void apply(DataArray du_, ScalarArray inverse_jacobian_,
+                    const std::array<std::size_t, 3>& n_elems_,
+                    Kokkos::Cuda& stream) {
+    ParabolicJacobianProjFunctor functor(du_, inverse_jacobian_);
+    Kokkos::parallel_for(
+        "parabolic_jacobian_proj",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            stream, {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
+        functor);
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem,
+                                         const std::size_t& kelem) const {
+    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes * Basis::NNodes;
+    for (std::size_t dof = 0; dof < ndofs; ++dof) {
+      const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
+      for (std::size_t var = 0; var < Equations::NVARS; ++var) {
+        du(ielem, jelem, kelem, dof, var) *= factor;
+      }
     }
-    // }
   }
 
   DataArray du;
