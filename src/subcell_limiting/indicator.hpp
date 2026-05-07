@@ -165,6 +165,30 @@ struct IndicatorValueAccessor<equations::CompressibleEuler2D<T>> {
 };
 
 template <class T>
+struct IndicatorValueAccessor<equations::CompressibleNavierStokes2D<T>> {
+  using traits =
+      equations::EquationTraits<equations::CompressibleNavierStokes2D<T>>;
+  using value_type = typename traits::value_type;
+
+  template <class ArrayU>
+  KOKKOS_INLINE_FUNCTION static value_type
+  get_indicator_value(const ArrayU& u, std::size_t ielem, std::size_t jelem,
+                      std::size_t dof) {
+    const value_type rho = u(ielem, jelem, dof, 0);
+    const value_type rhou = u(ielem, jelem, dof, 1);
+    const value_type rhov = u(ielem, jelem, dof, 2);
+    const value_type rhoE = u(ielem, jelem, dof, 3);
+    const value_type u_vel = rhou / rho;
+    const value_type v_vel = rhov / rho;
+    const value_type gamma = static_cast<value_type>(1.4);
+    const value_type p = (gamma - static_cast<value_type>(1.0)) *
+                         (rhoE - static_cast<value_type>(0.5) * rho *
+                                     (u_vel * u_vel + v_vel * v_vel));
+    return p * rho;
+  }
+};
+
+template <class T>
 struct IndicatorValueAccessor<equations::CompressibleEuler3D<T>> {
   using traits = equations::EquationTraits<equations::CompressibleEuler3D<T>>;
   using value_type = typename traits::value_type;

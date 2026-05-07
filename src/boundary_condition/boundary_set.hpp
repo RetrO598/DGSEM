@@ -13,6 +13,43 @@ template <std::size_t NDIMS, class BC, class Equations, class SurfaceFlux,
           class Mesh, class T, class ArrayU, class ElementData, class ArrayFlux>
 struct BCDispatcher;
 
+template <class BC, class Equations, class Mesh, class T, std::size_t NDIMS,
+          class ArrayU, class ElementData, class ArrayFlux>
+KOKKOS_INLINE_FUNCTION void
+apply_gradient_bc_device_if_available(const BC& bc, const Mesh& mesh,
+                                      const Equations& eq, const ArrayU& u,
+                                      const ElementData& element_data,
+                                      ArrayFlux& surface_flux,
+                                      std::size_t face_id, T time,
+                                      int index) {
+  if constexpr (requires {
+                  bc.template apply_gradient_device<Equations, Mesh, T, NDIMS>(
+                      mesh, eq, u, element_data, surface_flux, face_id, time,
+                      index);
+                }) {
+    bc.template apply_gradient_device<Equations, Mesh, T, NDIMS>(
+        mesh, eq, u, element_data, surface_flux, face_id, time, index);
+  }
+}
+
+template <class BC, class Equations, class Mesh, class T, std::size_t NDIMS,
+          class ArrayU, class ElementData, class ArrayViscousFlux,
+          class ArrayFlux>
+KOKKOS_INLINE_FUNCTION void apply_viscous_bc_device_if_available(
+    const BC& bc, const Mesh& mesh, const Equations& eq, const ArrayU& u,
+    const ElementData& element_data, const ArrayViscousFlux& viscous_flux,
+    ArrayFlux& surface_flux, std::size_t face_id, T time, int index) {
+  if constexpr (requires {
+                  bc.template apply_viscous_device<Equations, Mesh, T, NDIMS>(
+                      mesh, eq, u, element_data, viscous_flux, surface_flux,
+                      face_id, time, index);
+                }) {
+    bc.template apply_viscous_device<Equations, Mesh, T, NDIMS>(
+        mesh, eq, u, element_data, viscous_flux, surface_flux, face_id, time,
+        index);
+  }
+}
+
 template <class BC, class Equations, class SurfaceFlux, class Mesh, class T,
           class ArrayU, class ElementData, class ArrayFlux>
 struct BCDispatcher<1, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ElementData,
@@ -73,6 +110,67 @@ struct BCDispatcher<3, BC, Equations, SurfaceFlux, Mesh, T, ArrayU, ElementData,
   }
 };
 
+template <std::size_t NDIMS, class BC, class Equations, class Mesh, class T,
+          class ArrayU, class ElementData, class ArrayFlux>
+struct GradientBCDispatcher {
+  static void dispatch(const BC& bc, const Mesh& mesh, const Equations& eq,
+                       const ArrayU& u, const ElementData& element_data,
+                       ArrayFlux& surface_flux, std::size_t face_id, T time) {
+    std::size_t range = 1;
+    if constexpr (NDIMS == 2) {
+      auto n_cells = mesh.get_num_cells();
+      range = (face_id < 2) ? n_cells[1] : n_cells[0];
+    } else if constexpr (NDIMS == 3) {
+      auto n_cells = mesh.get_num_cells();
+      if (face_id < 2) {
+        range = n_cells[1] * n_cells[2];
+      } else if (face_id < 4) {
+        range = n_cells[0] * n_cells[2];
+      } else {
+        range = n_cells[0] * n_cells[1];
+      }
+    }
+
+    Kokkos::parallel_for(
+        "Gradient_BC_Apply", range, KOKKOS_LAMBDA(int i) {
+          apply_gradient_bc_device_if_available<BC, Equations, Mesh, T, NDIMS>(
+              bc, mesh, eq, u, element_data, surface_flux, face_id, time, i);
+        });
+  }
+};
+
+template <std::size_t NDIMS, class BC, class Equations, class Mesh, class T,
+          class ArrayU, class ElementData, class ArrayViscousFlux,
+          class ArrayFlux>
+struct ViscousBCDispatcher {
+  static void dispatch(const BC& bc, const Mesh& mesh, const Equations& eq,
+                       const ArrayU& u, const ElementData& element_data,
+                       const ArrayViscousFlux& viscous_flux,
+                       ArrayFlux& surface_flux, std::size_t face_id, T time) {
+    std::size_t range = 1;
+    if constexpr (NDIMS == 2) {
+      auto n_cells = mesh.get_num_cells();
+      range = (face_id < 2) ? n_cells[1] : n_cells[0];
+    } else if constexpr (NDIMS == 3) {
+      auto n_cells = mesh.get_num_cells();
+      if (face_id < 2) {
+        range = n_cells[1] * n_cells[2];
+      } else if (face_id < 4) {
+        range = n_cells[0] * n_cells[2];
+      } else {
+        range = n_cells[0] * n_cells[1];
+      }
+    }
+
+    Kokkos::parallel_for(
+        "Viscous_BC_Apply", range, KOKKOS_LAMBDA(int i) {
+          apply_viscous_bc_device_if_available<BC, Equations, Mesh, T, NDIMS>(
+              bc, mesh, eq, u, element_data, viscous_flux, surface_flux,
+              face_id, time, i);
+        });
+  }
+};
+
 template <class... FaceBCs>
 struct BoundarySet {
   static constexpr std::size_t NFACES = sizeof...(FaceBCs);
@@ -106,6 +204,41 @@ struct BoundarySet {
                      Mesh, T, ArrayU, ElementData,
                      ArrayFlux>::dispatch(bc, mesh, eq, u, element_data,
                                           surface_flux, face_id, time);
+      });
+    }
+  }
+
+  template <class Equations, class Mesh, class T, std::size_t NDIMS,
+            class ArrayU, class ElementData, class ArrayFlux>
+  void apply_gradient(const Mesh& mesh, const Equations& eq, const ArrayU& u,
+                      const ElementData& element_data, ArrayFlux& surface_flux,
+                      std::size_t face_id, T time) const {
+    if constexpr (NFACES > 0) {
+      tuple_switch(face_id, [&](const auto& bc) {
+        GradientBCDispatcher<NDIMS, std::decay_t<decltype(bc)>, Equations,
+                             Mesh, T, ArrayU, ElementData,
+                             ArrayFlux>::dispatch(bc, mesh, eq, u,
+                                                  element_data, surface_flux,
+                                                  face_id, time);
+      });
+    }
+  }
+
+  template <class Equations, class Mesh, class T, std::size_t NDIMS,
+            class ArrayU, class ElementData, class ArrayViscousFlux,
+            class ArrayFlux>
+  void apply_viscous(const Mesh& mesh, const Equations& eq, const ArrayU& u,
+                     const ElementData& element_data,
+                     const ArrayViscousFlux& viscous_flux,
+                     ArrayFlux& surface_flux, std::size_t face_id,
+                     T time) const {
+    if constexpr (NFACES > 0) {
+      tuple_switch(face_id, [&](const auto& bc) {
+        ViscousBCDispatcher<NDIMS, std::decay_t<decltype(bc)>, Equations, Mesh,
+                            T, ArrayU, ElementData, ArrayViscousFlux,
+                            ArrayFlux>::dispatch(bc, mesh, eq, u,
+                                                 element_data, viscous_flux,
+                                                 surface_flux, face_id, time);
       });
     }
   }

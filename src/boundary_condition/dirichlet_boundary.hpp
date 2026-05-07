@@ -118,6 +118,81 @@ struct DirichletBC {
           }
         });
   }
+
+  template <class Equations, class Mesh, class T, std::size_t NDIMS,
+            class ArrayU, class ElementData, class ArrayFlux>
+  KOKKOS_INLINE_FUNCTION void
+  apply_gradient_device(const Mesh& mesh, const Equations& eq, const ArrayU& u,
+                        const ElementData& element_data,
+                        ArrayFlux& surface_flux, std::size_t face_id, T time,
+                        int index = 0) const
+    requires(NDIMS == 2)
+  {
+    using traits = equations::EquationTraits<Equations>;
+    constexpr std::size_t NVARS = traits::NVARS;
+
+    auto get_u_outer_device = [&](const std::array<T, NDIMS>& coord, T t) {
+      std::array<T, NVARS> u_out{};
+      if constexpr (std::is_invocable_v<Func, const std::array<T, NDIMS>&, T>) {
+        u_out = func(coord, t);
+      } else {
+        for (std::size_t var = 0; var < NVARS; ++var) {
+          u_out[var] = func[var];
+        }
+      }
+      return u_out;
+    };
+
+    const auto n_cells = mesh.get_num_cells();
+    const std::size_t n_nodes = utils::infer_n_nodes<NDIMS>(u);
+
+    utils::for_each_boundary_face_node<NDIMS>(
+        face_id, index, n_cells, n_nodes,
+        [&](const auto& location) {
+          const auto coord =
+              utils::boundary_coord<NDIMS, T>(element_data, location);
+          const auto u_outer = get_u_outer_device(coord, time);
+          const auto q_outer = eq.gradient_variables(u_outer);
+
+          for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+            surface_flux(location.ielem, location.jelem, location.storage_dof,
+                         var) = q_outer[var];
+          }
+        });
+  }
+
+  template <class Equations, class Mesh, class T, std::size_t NDIMS,
+            class ArrayU, class ElementData, class ArrayViscousFlux,
+            class ArrayFlux>
+  KOKKOS_INLINE_FUNCTION void
+  apply_viscous_device(const Mesh& mesh, const Equations& eq, const ArrayU& u,
+                       const ElementData& element_data,
+                       const ArrayViscousFlux& viscous_flux,
+                       ArrayFlux& surface_flux, std::size_t face_id, T time,
+                       int index = 0) const
+    requires(NDIMS == 2)
+  {
+    const auto n_cells = mesh.get_num_cells();
+    const std::size_t n_nodes = utils::infer_n_nodes<NDIMS>(u);
+
+    utils::for_each_boundary_face_node<NDIMS>(
+        face_id, index, n_cells, n_nodes,
+        [&](const auto& location) {
+          const auto normal =
+              utils::boundary_normal<NDIMS, T>(element_data, location);
+
+          for (std::size_t var = 0; var < Equations::NVARS; ++var) {
+            surface_flux(location.ielem, location.jelem, location.storage_dof,
+                         var) =
+                viscous_flux(location.ielem, location.jelem,
+                             location.boundary_dof, var, 0) *
+                    normal[0] +
+                viscous_flux(location.ielem, location.jelem,
+                             location.boundary_dof, var, 1) *
+                    normal[1];
+          }
+        });
+  }
 };
 
 template <class Func, class Predicate>

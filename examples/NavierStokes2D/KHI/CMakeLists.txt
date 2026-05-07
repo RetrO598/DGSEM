@@ -1,0 +1,2 @@
+add_executable(navier_stokes_2d_khi viscous_khi.cpp)
+target_link_libraries(navier_stokes_2d_khi PRIVATE dgsem)

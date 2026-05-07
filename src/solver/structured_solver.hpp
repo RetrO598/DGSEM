@@ -82,7 +82,10 @@ public:
   void apply_gradient_jacobian(solution& sol)
     requires ParabolicEquations<Equations>;
 
-  void calc_gradients(solution& sol)
+  void calc_gradients(solution& sol, value_type time = value_type{0})
+    requires ParabolicEquations<Equations>;
+
+  void apply_gradient_boundary_condition(solution& sol, value_type time)
     requires ParabolicEquations<Equations>;
 
   void calc_viscous_flux(solution& sol)
@@ -97,7 +100,10 @@ public:
   void calc_viscous_surface_integral(solution& sol)
     requires ParabolicEquations<Equations>;
 
-  void calc_viscous_rhs(solution& sol)
+  void apply_viscous_boundary_condition(solution& sol, value_type time)
+    requires ParabolicEquations<Equations>;
+
+  void calc_viscous_rhs(solution& sol, value_type time = value_type{0})
     requires ParabolicEquations<Equations>;
 
   void apply_boundary_condition(solution& sol, value_type time);
@@ -265,15 +271,36 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
-                      BoundarySetType>::calc_gradients(solution& sol)
+                      BoundarySetType>::calc_gradients(solution& sol,
+                                                       value_type time)
   requires ParabolicEquations<Equations>
 {
   Kokkos::deep_copy(sol.gradient_device, value_type{0.0});
   calc_gradient_volume_integral(sol);
   transform_gradient_to_physical(sol);
   calc_gradient_interface_flux(sol);
+  apply_gradient_boundary_condition(sol, time);
   calc_gradient_surface_integral(sol);
   apply_gradient_jacobian(sol);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::
+    apply_gradient_boundary_condition(solution& sol, value_type time)
+      requires ParabolicEquations<Equations>
+{
+  const auto element_data = element.device_data();
+  for (std::size_t i = 0; i < NDIMS; ++i) {
+    boundary_set.template apply_gradient<Equations, Mesh, value_type, NDIMS>(
+        mesh, eq, sol.u_device, element_data, sol.gradient_surface_flux_device,
+        2 * i, time);
+
+    boundary_set.template apply_gradient<Equations, Mesh, value_type, NDIMS>(
+        mesh, eq, sol.u_device, element_data, sol.gradient_surface_flux_device,
+        2 * i + 1, time);
+  }
 }
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
@@ -327,13 +354,34 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
-                      BoundarySetType>::calc_viscous_rhs(solution& sol)
+                      BoundarySetType>::
+    apply_viscous_boundary_condition(solution& sol, value_type time)
+      requires ParabolicEquations<Equations>
+{
+  const auto element_data = element.device_data();
+  for (std::size_t i = 0; i < NDIMS; ++i) {
+    boundary_set.template apply_viscous<Equations, Mesh, value_type, NDIMS>(
+        mesh, eq, sol.u_device, element_data, sol.viscous_flux_device,
+        sol.viscous_surface_flux_value_device, 2 * i, time);
+
+    boundary_set.template apply_viscous<Equations, Mesh, value_type, NDIMS>(
+        mesh, eq, sol.u_device, element_data, sol.viscous_flux_device,
+        sol.viscous_surface_flux_value_device, 2 * i + 1, time);
+  }
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_viscous_rhs(solution& sol,
+                                                         value_type time)
   requires ParabolicEquations<Equations>
 {
-  calc_gradients(sol);
+  calc_gradients(sol, time);
   calc_viscous_flux(sol);
   calc_viscous_volume_integral(sol);
   calc_viscous_interface_flux(sol);
+  apply_viscous_boundary_condition(sol, time);
   calc_viscous_surface_integral(sol);
 }
 
@@ -384,6 +432,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
     calc_gradient_volume_integral(sol);
     transform_gradient_to_physical(sol);
     calc_gradient_interface_flux(sol);
+    apply_gradient_boundary_condition(sol, time);
 
     calc_gradient_surface_integral(sol);
     apply_gradient_jacobian(sol);
@@ -392,6 +441,7 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 
     calc_viscous_volume_integral(sol);
     calc_viscous_interface_flux(sol);
+    apply_viscous_boundary_condition(sol, time);
 
     calc_viscous_surface_integral(sol);
   }

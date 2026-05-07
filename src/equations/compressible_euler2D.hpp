@@ -61,37 +61,10 @@ public:
   value_type get_wave_speed(const std::array<value_type, NVARS>& u_ll,
                             const std::array<value_type, NVARS>& u_rr,
                             std::size_t dim) const {
-    const value_type rho_ll = u_ll[0];
-    const value_type rhou_ll = u_ll[1];
-    const value_type rhov_ll = u_ll[2];
-    const value_type rhoE_ll = u_ll[3];
-
-    const value_type rho_rr = u_rr[0];
-    const value_type rhou_rr = u_rr[1];
-    const value_type rhov_rr = u_rr[2];
-    const value_type rhoE_rr = u_rr[3];
-
-    const value_type u_vel_ll = rhou_ll / rho_ll;
-    const value_type v_vel_ll = rhov_ll / rho_ll;
-    const value_type u_vel_rr = rhou_rr / rho_rr;
-    const value_type v_vel_rr = rhov_rr / rho_rr;
-
-    const value_type p_ll =
-        (gamma_ - static_cast<value_type>(1.0)) *
-        (rhoE_ll - static_cast<value_type>(0.5) * rho_ll *
-                       (u_vel_ll * u_vel_ll + v_vel_ll * v_vel_ll));
-    const value_type p_rr =
-        (gamma_ - static_cast<value_type>(1.0)) *
-        (rhoE_rr - static_cast<value_type>(0.5) * rho_rr *
-                       (u_vel_rr * u_vel_rr + v_vel_rr * v_vel_rr));
-
-    const value_type a_ll = std::sqrt(gamma_ * p_ll / rho_ll);
-    const value_type a_rr = std::sqrt(gamma_ * p_rr / rho_rr);
-
-    const value_type normal_ll = (dim == 0) ? u_vel_ll : v_vel_ll;
-    const value_type normal_rr = (dim == 0) ? u_vel_rr : v_vel_rr;
-
-    return std::max(std::abs(normal_ll) + a_ll, std::abs(normal_rr) + a_rr);
+    const std::array<value_type, NDIMS> normal =
+        dim == 0 ? std::array<value_type, NDIMS>{value_type{1}, value_type{0}}
+                 : std::array<value_type, NDIMS>{value_type{0}, value_type{1}};
+    return get_wave_speed(u_ll, u_rr, normal);
   }
 
   KOKKOS_INLINE_FUNCTION

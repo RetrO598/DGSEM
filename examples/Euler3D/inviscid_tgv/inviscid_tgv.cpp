@@ -40,7 +40,7 @@ int main() {
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleEuler3D<value_type>;
-    const std::size_t order = 3;
+    const std::size_t order = 4;
     using MyBasis = DGSEM::Basis::LobattoLegendreBasis<value_type, order>;
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
@@ -60,10 +60,10 @@ int main() {
                                            Mesh, decltype(boundaries)>;
     using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
-    std::size_t nx = 16;
-    std::size_t ny = 16;
-    std::size_t nz = 16;
-    value_type t_final = 14.0;
+    std::size_t nx = 32;
+    std::size_t ny = 32;
+    std::size_t nz = 32;
+    value_type t_final = 0.001;
 
     std::array<value_type, 3> domain_left = {0.0, 0.0, 0.0};
     std::array<value_type, 3> domain_right = {

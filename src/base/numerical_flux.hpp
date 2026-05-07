@@ -122,6 +122,48 @@ struct LaxFriedrichsFlux<equations::CompressibleNavierStokes3D<T>> {
 };
 
 template <class T>
+struct LaxFriedrichsFlux<equations::CompressibleNavierStokes2D<T>> {
+  using traits =
+      equations::EquationTraits<equations::CompressibleNavierStokes2D<T>>;
+  using value_type = typename traits::value_type;
+
+  constexpr static std::size_t NDIMS = traits::NDIMS;
+  constexpr static std::size_t NVARS = traits::NVARS;
+
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
+  numerical_flux(const equations::CompressibleNavierStokes2D<T>& eq,
+                 const std::array<value_type, NVARS>& uL,
+                 const std::array<value_type, NVARS>& uR,
+                 std::size_t dim = 0) {
+    auto max_speed = eq.get_wave_speed(uL, uR, dim);
+    std::array<T, NVARS> flux_L = eq.flux(uL, dim);
+    std::array<T, NVARS> flux_R = eq.flux(uR, dim);
+    std::array<value_type, NVARS> flux{};
+    for (std::size_t i = 0; i < NVARS; ++i) {
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
+    }
+    return flux;
+  }
+
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<value_type, NVARS>
+  numerical_flux(const equations::CompressibleNavierStokes2D<T>& eq,
+                 const std::array<value_type, NVARS>& uL,
+                 const std::array<value_type, NVARS>& uR,
+                 const std::array<value_type, NDIMS>& normal) {
+    auto max_speed = eq.get_wave_speed(uL, uR, normal);
+    std::array<T, NVARS> flux_L = eq.flux(uL, normal);
+    std::array<T, NVARS> flux_R = eq.flux(uR, normal);
+    std::array<value_type, NVARS> flux{};
+    for (std::size_t i = 0; i < NVARS; ++i) {
+      flux[i] = static_cast<value_type>(0.5) * (flux_L[i] + flux_R[i]) -
+                static_cast<value_type>(0.5) * max_speed * (uR[i] - uL[i]);
+    }
+    return flux;
+  }
+};
+
+template <class T>
 struct LaxFriedrichsFlux<equations::BuckleyLeverett1D<T>> {
   using traits = equations::EquationTraits<equations::BuckleyLeverett1D<T>>;
   using value_type = typename traits::value_type;
@@ -510,6 +552,24 @@ struct ChandrashekarFlux<equations::CompressibleEuler2D<T>> {
         f2 * v1_avg + f3 * v2_avg;
 
     return {f1, f2, f3, f4};
+  }
+};
+
+template <class T>
+struct ChandrashekarFlux<equations::CompressibleNavierStokes2D<T>> {
+  using traits =
+      equations::EquationTraits<equations::CompressibleNavierStokes2D<T>>;
+  constexpr static std::size_t NDIMS = traits::NDIMS;
+  constexpr static std::size_t NVARS = traits::NVARS;
+
+  KOKKOS_INLINE_FUNCTION constexpr static std::array<T, NVARS>
+  numerical_flux(const equations::CompressibleNavierStokes2D<T>& eq,
+                 const std::array<T, NVARS>& u_ll,
+                 const std::array<T, NVARS>& u_rr,
+                 const std::array<T, NDIMS>& normal) {
+    const equations::CompressibleEuler2D<T> euler(eq.get_gamma());
+    return ChandrashekarFlux<equations::CompressibleEuler2D<T>>::
+        numerical_flux(euler, u_ll, u_rr, normal);
   }
 };
 

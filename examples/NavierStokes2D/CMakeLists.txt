@@ -1,0 +1,2 @@
+add_subdirectory(viscous_shock_tube)
+add_subdirectory(KHI)

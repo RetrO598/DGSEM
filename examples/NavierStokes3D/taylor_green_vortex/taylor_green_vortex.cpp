@@ -75,7 +75,7 @@ int main() {
     const std::size_t nx = 32;
     const std::size_t ny = 32;
     const std::size_t nz = 32;
-    const value_type t_final = 0.1 / u0;
+    const value_type t_final = 10.0 / u0;
 
     std::cout << "t final: " << t_final << std::endl;
 
@@ -103,7 +103,7 @@ int main() {
     TaylorGreenVortex3D<value_type> initial{};
     solver.initialize(initial, sol);
 
-    const value_type cfl = 0.1;
+    const value_type cfl = 0.3;
     const value_type dx = (domain_right[0] - domain_left[0]) / nx;
     const value_type dy = (domain_right[1] - domain_left[1]) / ny;
     const value_type dz = (domain_right[2] - domain_left[2]) / nz;
@@ -120,10 +120,10 @@ int main() {
                                DGSEM::DivergenceChecker<value_type, Eq::NVARS>>;
     Analyzer analyzer;
 
-    // using static_analyzer =
-    //     DGSEM::AnalyzerWrapper<MyBasis, Eq, DGSEM::VolumeAverageEuler<Eq>>;
+    using static_analyzer =
+        DGSEM::AnalyzerWrapper<MyBasis, Eq, DGSEM::VolumeAverageEuler<Eq>>;
 
-    // static_analyzer analyzer_statics;
+    static_analyzer analyzer_statics;
 
     time_integrator.add_observer(std::make_unique<PrintObserver>(1000));
 
@@ -135,9 +135,9 @@ int main() {
         "navier_stokes_tgv_re1600", sol, container.node_coordinates, n_cells,
         1000));
 
-    // time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
-    //     DGSEM::VolumeWeightedAnalysisTag{}, analyzer_statics, sol, container,
-    //     n_cells, DGSEM::VolumeAverageCsvWriter<Eq>("static.csv")));
+    time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
+        DGSEM::VolumeWeightedAnalysisTag{}, analyzer_statics, sol, container,
+        n_cells, DGSEM::VolumeAverageCsvWriter<Eq>("static.csv")));
 
     time_integrator.solve(solver, sol, dt);
 

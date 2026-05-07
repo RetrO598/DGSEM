@@ -1,0 +1,2 @@
+add_executable(navier_stokes_2d_viscous_shock_tube viscous_shock_tube.cpp)
+target_link_libraries(navier_stokes_2d_viscous_shock_tube PRIVATE dgsem)

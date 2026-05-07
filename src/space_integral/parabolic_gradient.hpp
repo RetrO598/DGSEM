@@ -477,4 +477,344 @@ struct GradientJacobianProjFunctor<T, Basis, Equations, 3> {
   ScalarArray inverse_jacobian;
 };
 
+template <class T, class Basis, class Equations>
+struct GradientVolumeIntegralFunctor<T, Basis, Equations, 2> {
+  using traits = equations::EquationTraits<Equations>;
+  using DataArray = typename solution_type_traits<T, 2>::DataArray;
+  using VectorFieldArray =
+      typename node_vector_field_type_traits<T, 2>::DataArray;
+  using BasisData = typename Basis::DeviceData;
+
+  GradientVolumeIntegralFunctor(DataArray u_, VectorFieldArray gradient_,
+                                const Equations& eq_)
+      : u(u_), gradient(gradient_), eq(eq_), basis(Basis::device_data()) {}
+
+  static void apply(DataArray u_, VectorFieldArray gradient_,
+                    const Equations& eq_,
+                    const std::array<std::size_t, 2>& n_elems_) {
+    GradientVolumeIntegralFunctor functor(u_, gradient_, eq_);
+    Kokkos::parallel_for("gradient_volume_integral",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                         functor);
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem) const {
+    for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+      for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+        const std::size_t dof =
+            DGSEM::utils::local_dof<Basis::NNodes>(inode, jnode);
+        const auto q = load_gradient_variables(ielem, jelem, dof);
+
+        for (std::size_t ii = 0; ii < Basis::NNodes; ++ii) {
+          const std::size_t out_dof =
+              DGSEM::utils::local_dof<Basis::NNodes>(ii, jnode);
+          for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+            gradient(ielem, jelem, out_dof, var, 0) +=
+                basis.derivative_dhat(ii, inode) * q[var];
+          }
+        }
+
+        for (std::size_t jj = 0; jj < Basis::NNodes; ++jj) {
+          const std::size_t out_dof =
+              DGSEM::utils::local_dof<Basis::NNodes>(inode, jj);
+          for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+            gradient(ielem, jelem, out_dof, var, 1) +=
+                basis.derivative_dhat(jj, jnode) * q[var];
+          }
+        }
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION std::array<T, Equations::NGRAD_VARS>
+  load_gradient_variables(std::size_t ielem, std::size_t jelem,
+                          std::size_t dof) const {
+    std::array<T, traits::NVARS> state{};
+    for (std::size_t var = 0; var < traits::NVARS; ++var) {
+      state[var] = u(ielem, jelem, dof, var);
+    }
+    return eq.gradient_variables(state);
+  }
+
+  DataArray u;
+  VectorFieldArray gradient;
+  Equations eq;
+  BasisData basis;
+};
+
+template <class T, class Basis, class Equations>
+struct GradientPhysicalTransformFunctor<T, Basis, Equations, 2> {
+  using VectorFieldArray =
+      typename node_vector_field_type_traits<T, 2>::DataArray;
+  using MetricArray = typename jacobian_type_traits<T, 2>::JacobianMatrix;
+
+  GradientPhysicalTransformFunctor(VectorFieldArray gradient_,
+                                   MetricArray contravariant_vectors_)
+      : gradient(gradient_), contravariant_vectors(contravariant_vectors_) {}
+
+  static void apply(VectorFieldArray gradient_,
+                    MetricArray contravariant_vectors_,
+                    const std::array<std::size_t, 2>& n_elems_) {
+    GradientPhysicalTransformFunctor functor(gradient_, contravariant_vectors_);
+    Kokkos::parallel_for("gradient_transform",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                         functor);
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem) const {
+    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes;
+
+    for (std::size_t dof = 0; dof < ndofs; ++dof) {
+      const T ja11 = contravariant_vectors(ielem, jelem, dof, 0, 0);
+      const T ja12 = contravariant_vectors(ielem, jelem, dof, 0, 1);
+      const T ja21 = contravariant_vectors(ielem, jelem, dof, 1, 0);
+      const T ja22 = contravariant_vectors(ielem, jelem, dof, 1, 1);
+
+      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+        const T ref_xi = gradient(ielem, jelem, dof, var, 0);
+        const T ref_eta = gradient(ielem, jelem, dof, var, 1);
+
+        gradient(ielem, jelem, dof, var, 0) = ja11 * ref_xi + ja21 * ref_eta;
+        gradient(ielem, jelem, dof, var, 1) = ja12 * ref_xi + ja22 * ref_eta;
+      }
+    }
+  }
+
+  VectorFieldArray gradient;
+  MetricArray contravariant_vectors;
+};
+
+template <class T, class Basis, class Equations>
+struct GradientInterfaceFluxFunctor<T, Basis, Equations, 2> {
+  using traits = equations::EquationTraits<Equations>;
+  using DataArray = typename solution_type_traits<T, 2>::DataArray;
+  using IndexArray = typename index_type_traits<2>::IndexArray;
+
+  GradientInterfaceFluxFunctor(IndexArray neighbors_, const Equations& eq_,
+                               DataArray u_, DataArray surface_flux_)
+      : neighbors(neighbors_), eq(eq_), u(u_), surface_flux(surface_flux_) {}
+
+  static void apply(IndexArray neighbors_, const Equations& eq_, DataArray u_,
+                    DataArray surface_flux_,
+                    const std::array<std::size_t, 2>& n_elems_) {
+    GradientInterfaceFluxFunctor functor(neighbors_, eq_, u_, surface_flux_);
+    Kokkos::parallel_for("gradient_interface_flux",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                         functor);
+  }
+
+  KOKKOS_INLINE_FUNCTION static std::size_t face_dof(std::size_t face,
+                                                     std::size_t node) {
+    return face * Basis::NNodes + node;
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem) const {
+    apply_face_x(ielem, jelem);
+    apply_face_y(ielem, jelem);
+  }
+
+  KOKKOS_INLINE_FUNCTION void apply_face_x(std::size_t ielem,
+                                           std::size_t jelem) const {
+    const std::size_t left_i = neighbors(ielem, jelem, 0, 0);
+    const std::size_t left_j = neighbors(ielem, jelem, 0, 1);
+    if (left_i == static_cast<std::size_t>(-1) ||
+        left_j == static_cast<std::size_t>(-1)) {
+      return;
+    }
+
+    for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+      const std::size_t left_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(Basis::NNodes - 1, jnode);
+      const std::size_t right_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(0, jnode);
+      const auto q_left = load_gradient_variables(left_i, left_j, left_dof);
+      const auto q_right = load_gradient_variables(ielem, jelem, right_dof);
+
+      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+        const T qhat = static_cast<T>(0.5) * (q_left[var] + q_right[var]);
+        surface_flux(left_i, left_j, face_dof(1, jnode), var) = qhat;
+        surface_flux(ielem, jelem, face_dof(0, jnode), var) = qhat;
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION void apply_face_y(std::size_t ielem,
+                                           std::size_t jelem) const {
+    const std::size_t bottom_i = neighbors(ielem, jelem, 1, 0);
+    const std::size_t bottom_j = neighbors(ielem, jelem, 1, 1);
+    if (bottom_i == static_cast<std::size_t>(-1) ||
+        bottom_j == static_cast<std::size_t>(-1)) {
+      return;
+    }
+
+    for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+      const std::size_t bottom_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(inode, Basis::NNodes - 1);
+      const std::size_t top_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(inode, 0);
+      const auto q_bottom =
+          load_gradient_variables(bottom_i, bottom_j, bottom_dof);
+      const auto q_top = load_gradient_variables(ielem, jelem, top_dof);
+
+      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+        const T qhat = static_cast<T>(0.5) * (q_bottom[var] + q_top[var]);
+        surface_flux(bottom_i, bottom_j, face_dof(3, inode), var) = qhat;
+        surface_flux(ielem, jelem, face_dof(2, inode), var) = qhat;
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION std::array<T, Equations::NGRAD_VARS>
+  load_gradient_variables(std::size_t ielem, std::size_t jelem,
+                          std::size_t dof) const {
+    std::array<T, traits::NVARS> state{};
+    for (std::size_t var = 0; var < traits::NVARS; ++var) {
+      state[var] = u(ielem, jelem, dof, var);
+    }
+    return eq.gradient_variables(state);
+  }
+
+  IndexArray neighbors;
+  Equations eq;
+  DataArray u;
+  DataArray surface_flux;
+};
+
+template <class T, class Basis, class Equations>
+struct GradientSurfaceIntegralFunctor<T, Basis, Equations, 2> {
+  using DataArray = typename solution_type_traits<T, 2>::DataArray;
+  using VectorFieldArray =
+      typename node_vector_field_type_traits<T, 2>::DataArray;
+  using MetricArray = typename jacobian_type_traits<T, 2>::JacobianMatrix;
+  using ScalarArray = typename scalar_node_type_traits<T, 2>::ScalarArray;
+  using BasisData = typename Basis::DeviceData;
+
+  GradientSurfaceIntegralFunctor(VectorFieldArray gradient_,
+                                 DataArray surface_flux_,
+                                 MetricArray contravariant_vectors_,
+                                 ScalarArray inverse_jacobian_)
+      : gradient(gradient_), surface_flux(surface_flux_),
+        contravariant_vectors(contravariant_vectors_),
+        inverse_jacobian(inverse_jacobian_), basis(Basis::device_data()) {}
+
+  static void apply(VectorFieldArray gradient_, DataArray surface_flux_,
+                    MetricArray contravariant_vectors_,
+                    ScalarArray inverse_jacobian_,
+                    const std::array<std::size_t, 2>& n_elems_) {
+    GradientSurfaceIntegralFunctor functor(
+        gradient_, surface_flux_, contravariant_vectors_, inverse_jacobian_);
+    Kokkos::parallel_for("gradient_surface_integral",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                         functor);
+  }
+
+  KOKKOS_INLINE_FUNCTION static std::size_t face_dof(std::size_t face,
+                                                     std::size_t node) {
+    return face * Basis::NNodes + node;
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem) const {
+    const T factor_1 = basis.boundary_interpolation_left[0];
+    const T factor_2 = basis.boundary_interpolation_right[Basis::NNodes - 1];
+
+    for (std::size_t jnode = 0; jnode < Basis::NNodes; ++jnode) {
+      const std::size_t left_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(0, jnode);
+      const std::size_t right_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(Basis::NNodes - 1, jnode);
+      const auto left_normal = face_normal(ielem, jelem, left_dof, 0);
+      const auto right_normal = face_normal(ielem, jelem, right_dof, 0);
+      add_face_contribution(ielem, jelem, left_dof, face_dof(0, jnode),
+                            left_normal, -factor_1);
+      add_face_contribution(ielem, jelem, right_dof, face_dof(1, jnode),
+                            right_normal, factor_2);
+    }
+
+    for (std::size_t inode = 0; inode < Basis::NNodes; ++inode) {
+      const std::size_t bottom_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(inode, 0);
+      const std::size_t top_dof =
+          DGSEM::utils::local_dof<Basis::NNodes>(inode, Basis::NNodes - 1);
+      const auto bottom_normal = face_normal(ielem, jelem, bottom_dof, 1);
+      const auto top_normal = face_normal(ielem, jelem, top_dof, 1);
+      add_face_contribution(ielem, jelem, bottom_dof, face_dof(2, inode),
+                            bottom_normal, -factor_1);
+      add_face_contribution(ielem, jelem, top_dof, face_dof(3, inode),
+                            top_normal, factor_2);
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION std::array<T, 2>
+  face_normal(std::size_t ielem, std::size_t jelem, std::size_t dof,
+              std::size_t direction) const {
+    const T sign =
+        inverse_jacobian(ielem, jelem, dof) >= T{0} ? T{1} : T{-1};
+    return {sign * contravariant_vectors(ielem, jelem, dof, direction, 0),
+            sign * contravariant_vectors(ielem, jelem, dof, direction, 1)};
+  }
+
+  KOKKOS_INLINE_FUNCTION void
+  add_face_contribution(std::size_t ielem, std::size_t jelem, std::size_t dof,
+                        std::size_t face_index,
+                        const std::array<T, 2>& normal, T factor) const {
+    for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+      const T qhat = surface_flux(ielem, jelem, face_index, var);
+      for (std::size_t dim = 0; dim < 2; ++dim) {
+        gradient(ielem, jelem, dof, var, dim) +=
+            factor * qhat * normal[dim];
+      }
+    }
+  }
+
+  VectorFieldArray gradient;
+  DataArray surface_flux;
+  MetricArray contravariant_vectors;
+  ScalarArray inverse_jacobian;
+  BasisData basis;
+};
+
+template <class T, class Basis, class Equations>
+struct GradientJacobianProjFunctor<T, Basis, Equations, 2> {
+  using VectorFieldArray =
+      typename node_vector_field_type_traits<T, 2>::DataArray;
+  using ScalarArray = typename scalar_node_type_traits<T, 2>::ScalarArray;
+
+  GradientJacobianProjFunctor(VectorFieldArray gradient_,
+                              ScalarArray inverse_jacobian_)
+      : gradient(gradient_), inverse_jacobian(inverse_jacobian_) {}
+
+  static void apply(VectorFieldArray gradient_, ScalarArray inverse_jacobian_,
+                    const std::array<std::size_t, 2>& n_elems_) {
+    GradientJacobianProjFunctor functor(gradient_, inverse_jacobian_);
+    Kokkos::parallel_for("gradient_jacobian_proj",
+                         Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+                             {0, 0}, {n_elems_[0], n_elems_[1]}),
+                         functor);
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
+                                         const std::size_t& jelem) const {
+    constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes;
+    for (std::size_t dof = 0; dof < ndofs; ++dof) {
+      const T factor = inverse_jacobian(ielem, jelem, dof);
+      for (std::size_t var = 0; var < Equations::NGRAD_VARS; ++var) {
+        for (std::size_t dim = 0; dim < 2; ++dim) {
+          gradient(ielem, jelem, dof, var, dim) *= factor;
+        }
+      }
+    }
+  }
+
+  VectorFieldArray gradient;
+  ScalarArray inverse_jacobian;
+};
+
 } // namespace DGSEM

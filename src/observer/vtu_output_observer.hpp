@@ -79,14 +79,17 @@ public:
     constexpr bool is_euler =
         std::is_same_v<equation, equations::CompressibleEuler2D<T>>;
 
-    const std::size_t nvars = is_euler ? NVARS + 1 : NVARS;
+    constexpr bool is_navier_stokes =
+        std::is_same_v<equation, equations::CompressibleNavierStokes2D<T>>;
+
+    const std::size_t nvars = (is_euler or is_navier_stokes) ? NVARS + 1 : NVARS;
 
     std::vector<double> points(3 * total_points);
     std::vector<double> values(nvars * total_points);
 
     std::vector<std::string> var_names;
 
-    if constexpr (is_euler) {
+    if constexpr (is_euler or is_navier_stokes) {
       var_names = {"rho", "rhou", "rhov", "rhoE", "pressure"};
     } else {
       for (std::size_t i = 0; i < NVARS; ++i) {
@@ -120,7 +123,7 @@ public:
               cons[v] = values[gid * nvars + v];
             }
 
-            if constexpr (is_euler) {
+            if constexpr (is_euler or is_navier_stokes) {
               auto prim = DGSEM::utils::cons_to_prim(cons, 1.4);
               values[gid * nvars + NVARS] = prim[3]; // pressure
             }
