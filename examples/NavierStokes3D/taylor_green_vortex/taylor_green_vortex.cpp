@@ -75,7 +75,7 @@ int main() {
     const std::size_t nx = 32;
     const std::size_t ny = 32;
     const std::size_t nz = 32;
-    const value_type t_final = 10.0 / u0;
+    const value_type t_final = 4.0 / u0;
 
     std::cout << "t final: " << t_final << std::endl;
 

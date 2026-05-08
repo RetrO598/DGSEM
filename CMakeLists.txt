@@ -82,14 +82,17 @@ find_package(VTK REQUIRED COMPONENTS CommonCore CommonDataModel IOXML FiltersCor
 # ========================
 # dgsem
 # ========================
-add_library(dgsem INTERFACE)
+add_library(dgsem STATIC
+    src/observer/observer_base.cpp
+    src/observer/print_observer.cpp
+    src/observer/vtu_output_observer_impl.cpp)
 
 target_include_directories(dgsem
-        INTERFACE
+        PUBLIC
                 $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
 
-target_link_libraries(dgsem INTERFACE Kokkos::kokkos)
-target_link_libraries(dgsem INTERFACE ${VTK_LIBRARIES})
+target_link_libraries(dgsem PUBLIC Kokkos::kokkos)
+target_link_libraries(dgsem PUBLIC ${VTK_LIBRARIES})
 
 if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
     add_compile_options(

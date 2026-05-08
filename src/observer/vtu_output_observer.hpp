@@ -9,6 +9,9 @@
 #include <string>
 #include <utils/utils.hpp>
 #include <vector>
+#include <vtkLagrangeHexahedron.h>
+#include <vtkLagrangeQuadrilateral.h>
+#include <vtkSmartPointer.h>
 
 namespace DGSEM {
 

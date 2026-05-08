@@ -340,43 +340,6 @@ struct ViscousInterfaceFluxFunctor<T, Basis, Equations, 3> {
   ScalarArray inverse_jacobian;
 };
 
-// template <class T, class Basis, class Equations, std::size_t NDIMS>
-// struct ParabolicJacobianProjFunctor;
-
-// template <class T, class Basis, class Equations>
-// struct ParabolicJacobianProjFunctor<T, Basis, Equations, 3> {
-//   using DataArray = typename solution_type_traits<T, 3>::DataArray;
-//   using ScalarArray = typename scalar_node_type_traits<T, 3>::ScalarArray;
-
-//   ParabolicJacobianProjFunctor(DataArray du_, ScalarArray inverse_jacobian_)
-//       : du(du_), inverse_jacobian(inverse_jacobian_) {}
-
-//   static void apply(DataArray du_, ScalarArray inverse_jacobian_,
-//                     const std::array<std::size_t, 3>& n_elems_) {
-//     ParabolicJacobianProjFunctor functor(du_, inverse_jacobian_);
-//     Kokkos::parallel_for(
-//         "parabolic_jacobian_proj",
-//         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-//             {0, 0, 0}, {n_elems_[0], n_elems_[1], n_elems_[2]}),
-//         functor);
-//   }
-
-//   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
-//                                          const std::size_t& jelem,
-//                                          const std::size_t& kelem) const {
-//     constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes *
-//     Basis::NNodes; for (std::size_t dof = 0; dof < ndofs; ++dof) {
-//       const T factor = inverse_jacobian(ielem, jelem, kelem, dof);
-//       for (std::size_t var = 0; var < Equations::NVARS; ++var) {
-//         du(ielem, jelem, kelem, dof, var) *= factor;
-//       }
-//     }
-//   }
-
-//   DataArray du;
-//   ScalarArray inverse_jacobian;
-// };
-
 template <class T, class Basis, class Equations>
 struct ViscousFluxFunctor<T, Basis, Equations, 2> {
   using traits = equations::EquationTraits<Equations>;
@@ -627,37 +590,5 @@ struct ViscousInterfaceFluxFunctor<T, Basis, Equations, 2> {
   MetricArray contravariant_vectors;
   ScalarArray inverse_jacobian;
 };
-
-// template <class T, class Basis, class Equations>
-// struct ParabolicJacobianProjFunctor<T, Basis, Equations, 2> {
-//   using DataArray = typename solution_type_traits<T, 2>::DataArray;
-//   using ScalarArray = typename scalar_node_type_traits<T, 2>::ScalarArray;
-
-//   ParabolicJacobianProjFunctor(DataArray du_, ScalarArray inverse_jacobian_)
-//       : du(du_), inverse_jacobian(inverse_jacobian_) {}
-
-//   static void apply(DataArray du_, ScalarArray inverse_jacobian_,
-//                     const std::array<std::size_t, 2>& n_elems_) {
-//     ParabolicJacobianProjFunctor functor(du_, inverse_jacobian_);
-//     Kokkos::parallel_for("parabolic_jacobian_proj",
-//                          Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
-//                              {0, 0}, {n_elems_[0], n_elems_[1]}),
-//                          functor);
-//   }
-
-//   KOKKOS_INLINE_FUNCTION void operator()(const std::size_t& ielem,
-//                                          const std::size_t& jelem) const {
-//     constexpr std::size_t ndofs = Basis::NNodes * Basis::NNodes;
-//     for (std::size_t dof = 0; dof < ndofs; ++dof) {
-//       const T factor = inverse_jacobian(ielem, jelem, dof);
-//       for (std::size_t var = 0; var < Equations::NVARS; ++var) {
-//         du(ielem, jelem, dof, var) *= factor;
-//       }
-//     }
-//   }
-
-//   DataArray du;
-//   ScalarArray inverse_jacobian;
-// };
 
 } // namespace DGSEM
