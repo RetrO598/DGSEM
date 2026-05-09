@@ -8,7 +8,7 @@
 #include <iostream>
 
 int main() {
-  Kokkos::initialize();
+  DGSEM::KokkosSession kokkos;
   {
     using Eq = DGSEM::equations::CompressibleEuler1D<double>;
     using MyBasis = DGSEM::Basis::LobattoLegendreBasis<double, 4>;
@@ -18,7 +18,7 @@ int main() {
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::HLLCFlux,
         DGSEM::HGIndicator<MyBasis, Eq>>;
-    MyBasis::initialize();
+    DGSEM::BasisGuard<MyBasis> basis;
     auto dirichFunc =
         KOKKOS_LAMBDA(const std::array<double, 1>& coordinate, double time) {
       double x = coordinate[0];
@@ -37,10 +37,6 @@ int main() {
 
     auto boundaries = DGSEM::BoundarySet(DGSEM::DirichletBC(dirichFunc),
                                          DGSEM::DirichletBC(dirichFunc));
-    using Mesh = DGSEM::StructuredMesh<double, 1>;
-    using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
-                                           Mesh, decltype(boundaries)>;
-    using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
     // std::array<double, 2> domain_mesh = {0.0, 1.0};
     std::array<double, 1> domain_left = {0.0};
@@ -48,32 +44,22 @@ int main() {
 
     std::array<std::size_t, 1> n_cells = {500};
 
-    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq(1.4);
-
-    DGSEM::StructuredElementContainer<double, 1> container;
-    DGSEM::StructuredElementInitializer<double, MyBasis,
-                                        DGSEM::LinearMapping<double>, 1>
-        initializer{
-            DGSEM::LinearMapping<double>(domain_left[0], domain_right[0]),
-            {true}};
-
-    initializer.init_elements(n_cells, container);
-
-    // container.sync_to_device();
-
-    Solver solver(eq, mesh, container, boundaries);
-
-    DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
+    auto problem =
+        DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
+            eq, domain_left, domain_right, n_cells, boundaries, {true});
+    auto& solver = problem.solver();
+    auto& sol = problem.solution();
+    auto& container = problem.elements();
+    const auto& mesh = problem.mesh();
 
     DGSEM::SodShockTubeInitial<double> initial{};
 
     std::cout << "Testing solver.initialize()..." << std::endl;
-    solver.initialize(initial, sol);
+    problem.initialize(initial);
     std::cout << "solver.initialize() returned successfully." << std::endl;
 
-    using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Mesh, Solution>;
-    TimeIntegrator time_integrator(sol, mesh);
+    auto time_integrator = problem.make_ssprk3();
     const double t_final = 0.2;
     const double cfl = 0.1;
     const double dx = (domain_right[0] - domain_left[0]) / n_cells[0];
@@ -119,9 +105,6 @@ int main() {
     nodes_file.close();
     std::cout << "Final solution saved to solution.txt and nodes.txt"
               << std::endl;
-
-    MyBasis::finalize();
   }
-  Kokkos::finalize();
   return 0;
 }

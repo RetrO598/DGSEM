@@ -30,21 +30,21 @@ The codebase is organized as a modular header-only library located in the `src/`
 ### Prerequisites
 - **C++20 Compiler**: GCC 11+ or Clang 15+.
 - **CUDA (Optional for GPU)**: **CUDA 12.1 or higher** is strictly required to support C++20 features (Concepts, etc.) within NVCC.
-- **CMake**: 3.23+ (recommended for better CUDA 20 support).
-- **Kokkos**: 4.0+ (must be installed and discoverable by `find_package`).
+- **CMake**: 3.28+.
+- **Kokkos**: Fetched automatically by CMake from Kokkos 4.7.02. No separate
+  `find_package(Kokkos)` installation is required for the default build.
 
 ### Build Instructions (CPU/OpenMP)
 ```bash
 mkdir build && cd build
-cmake .. -DKokkos_ENABLE_OPENMP=ON
+cmake .. -DENABLE_CUDA=OFF -DENABLE_OPENMP=ON -DENABLE_SERIAL=ON
 make -j$(nproc)
 ```
 
 ### Build Instructions (GPU/CUDA)
 ```bash
 mkdir build && cd build
-# Note: Ensure Kokkos is built with CUDA support
-cmake .. -DKokkos_ENABLE_CUDA=ON -DCMAKE_CXX_STANDARD=20
+cmake .. -DENABLE_CUDA=ON -DENABLE_OPENMP=OFF -DENABLE_SERIAL=ON
 make -j$(nproc)
 ```
 
@@ -66,10 +66,31 @@ Kokkos::initialize();
 Kokkos::finalize();
 ```
 
-### 2. GPU Performance Optimizations
+For application code and examples, prefer the RAII helpers when possible:
+
+```cpp
+DGSEM::KokkosSession kokkos;
+DGSEM::BasisGuard<MyBasis> basis;
+```
+
+### 2. Structured Problem Assembly
+For structured-grid simulations, `DGSEM::make_structured_problem` can assemble
+the mesh, element cache, solver, and solution container in one place while still
+leaving the lower-level `StructuredSolver` API available:
+
+```cpp
+auto problem = DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
+    eq, domain_left, domain_right, n_cells, boundaries, periodic);
+
+problem.initialize(initial_condition);
+auto time_integrator = problem.make_ssprk3(t_final);
+time_integrator.solve(problem.solver(), problem.solution(), dt);
+```
+
+### 3. GPU Performance Optimizations
 - **Coalesced Access**: Basis matrices (like `derivative_split_transpose`) are pre-transposed during initialization to ensure coalesced memory access within CUDA kernels.
 - **Inlining**: All computational kernels must be marked with `KOKKOS_INLINE_FUNCTION` to be callable from both Host and Device.
 - **Concepts**: The codebase uses C++20 concepts (e.g., `std::derived_from`) to enforce interface requirements. For CUDA builds, ensure NVCC is configured with `--expt-relaxed-constexpr` and `--expt-extended-lambda`.
 
-### 3. Header-Only Structure
+### 4. Header-Only Structure
 Most of the core logic resides in `.hpp` files. Adding new equations or flux schemes involves creating a new header and ensuring it fulfills the required concepts/traits.

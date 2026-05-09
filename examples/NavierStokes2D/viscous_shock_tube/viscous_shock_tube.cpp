@@ -43,7 +43,7 @@ struct DaruTenaudInitial
 };
 
 int main(int argc, char* argv[]) {
-  Kokkos::initialize(argc, argv);
+  DGSEM::KokkosSession kokkos(argc, argv);
   {
     using value_type = double;
     using Eq = DGSEM::equations::CompressibleNavierStokes2D<value_type>;
@@ -53,7 +53,6 @@ int main(int argc, char* argv[]) {
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
         DGSEM::HGIndicator<MyBasis, Eq>>;
-    using Mesh = DGSEM::StructuredMesh<value_type, 2>;
 
     std::size_t nx = 800;
     std::size_t ny = 400;
@@ -72,31 +71,30 @@ int main(int argc, char* argv[]) {
     constexpr value_type prandtl = 0.73;
     constexpr value_type mu = 1.0e-3;
 
-    MyBasis::initialize();
+    DGSEM::BasisGuard<MyBasis> basis;
 
     auto boundaries = DGSEM::BoundarySet(
         DGSEM::NSNoSlipAdiabaticWallBC{}, DGSEM::NSNoSlipAdiabaticWallBC{},
         DGSEM::NSNoSlipAdiabaticWallBC{}, DGSEM::NSSlipAdiabaticWallBC{});
 
-    using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
-                                           Mesh, decltype(boundaries)>;
-    using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
-    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
-
     const std::array<value_type, 2> domain_left = {0.0, 0.0};
     const std::array<value_type, 2> domain_right = {1.0, 0.5};
     const std::array<std::size_t, 2> n_cells = {nx, ny};
 
-    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq(gamma, mu, prandtl);
+    auto problem =
+        DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
+            eq, domain_left, domain_right, n_cells, boundaries, {false, false});
+    auto& solver = problem.solver();
+    auto& sol = problem.solution();
+    auto& container = problem.elements();
+    const auto& mesh = problem.mesh();
+    using Solution = typename decltype(problem)::SolutionType;
 
-    DGSEM::StructuredElementContainer<value_type, 2> container;
-    Solver solver(eq, mesh, container, boundaries, {false, false});
     solver.set_indicator_parameters(1.0, 0.1, false);
 
-    Solution sol(mesh);
     DaruTenaudInitial<value_type> initial{gamma};
-    solver.initialize(initial, sol);
+    problem.initialize(initial);
 
     using Analyzer =
         DGSEM::AnalyzerWrapper<MyBasis, Eq,
@@ -119,7 +117,7 @@ int main(int argc, char* argv[]) {
               << ", mu=" << mu << ", dt=" << dt << ", t_final=" << t_final
               << '\n';
 
-    TimeIntegrator time_integrator(sol, mesh, t_final);
+    auto time_integrator = problem.make_ssprk3(t_final);
     time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
         DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
         DGSEM::StopOnNaN<Eq>()));
@@ -129,9 +127,6 @@ int main(int argc, char* argv[]) {
         n_cells, 1000));
 
     time_integrator.solve(solver, sol, dt);
-
-    MyBasis::finalize();
   }
-  Kokkos::finalize();
   return 0;
 }

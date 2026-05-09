@@ -23,6 +23,9 @@ public:
   using value_type = typename traits::value_type;
   constexpr static std::size_t NDIMS = traits::NDIMS;
   constexpr static std::size_t NVARS = traits::NVARS;
+  static_assert(BoundarySetType::NFACES == 2 * NDIMS,
+                "StructuredSolver requires one boundary condition per mesh "
+                "face: 2 for 1D, 4 for 2D, and 6 for 3D.");
 
   using EquationType = Equations;
 
@@ -286,10 +289,11 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
-                      BoundarySetType>::
-    apply_gradient_boundary_condition(solution& sol, value_type time)
-      requires ParabolicEquations<Equations>
+void StructuredSolver<
+    Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+    BoundarySetType>::apply_gradient_boundary_condition(solution& sol,
+                                                        value_type time)
+  requires ParabolicEquations<Equations>
 {
   const auto element_data = element.device_data();
   for (std::size_t i = 0; i < NDIMS; ++i) {
@@ -353,10 +357,11 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
-void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
-                      BoundarySetType>::
-    apply_viscous_boundary_condition(solution& sol, value_type time)
-      requires ParabolicEquations<Equations>
+void StructuredSolver<
+    Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+    BoundarySetType>::apply_viscous_boundary_condition(solution& sol,
+                                                       value_type time)
+  requires ParabolicEquations<Equations>
 {
   const auto element_data = element.device_data();
   for (std::size_t i = 0; i < NDIMS; ++i) {

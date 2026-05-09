@@ -26,7 +26,7 @@ public:
     value_type mom = u[1];
     value_type rhoE = u[2];
     value_type u_vel = mom / rho;
-    value_type gamma = static_cast<value_type>(1.4);
+    value_type gamma = gamma_;
     value_type p = (gamma - static_cast<value_type>(1.0)) *
                    (rhoE - static_cast<value_type>(0.5) * rho * u_vel * u_vel);
     return {mom, mom * u_vel + p, u_vel * (rhoE + p)};
