@@ -1,7 +1,6 @@
 #include <Kokkos_Core.hpp>
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <dgsem.hpp>
@@ -54,8 +53,8 @@ int main(int argc, char* argv[]) {
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
         DGSEM::HGIndicator<MyBasis, Eq>>;
 
-    std::size_t nx = 800;
-    std::size_t ny = 400;
+    std::size_t nx = 400;
+    std::size_t ny = 200;
     value_type t_final = 1.0;
     if (argc > 1) {
       nx = static_cast<std::size_t>(std::strtoull(argv[1], nullptr, 10));

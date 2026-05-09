@@ -19,6 +19,17 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 class StructuredSolver {
 public:
+  static_assert(equations::EquationLike<Equations>,
+                "StructuredSolver requires an equation type with value_type, "
+                "NDIMS, and NVARS.");
+  static_assert(
+      requires {
+        Basis::NNodes;
+        Basis::initialize();
+        Basis::finalize();
+      }, "StructuredSolver requires a polynomial basis type with "
+         "NNodes, initialize(), and finalize().");
+
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename traits::value_type;
   constexpr static std::size_t NDIMS = traits::NDIMS;
@@ -125,6 +136,11 @@ public:
   std::size_t get_ndofs() const { return n_dofs; }
 
 private:
+  void calc_inviscid_rhs_terms(solution& sol, value_type time);
+
+  void calc_parabolic_rhs_terms(solution& sol, value_type time)
+    requires ParabolicEquations<Equations>;
+
   BoundarySetType boundary_set;
   Equations eq;
   Mesh mesh;
@@ -421,34 +437,52 @@ void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
 template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_inviscid_rhs_terms(solution& sol,
+                                                                value_type
+                                                                    time) {
+  calc_volume_integral(sol);
+  calc_interface_flux(sol);
+  apply_boundary_condition(sol, time);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
+                      BoundarySetType>::calc_parabolic_rhs_terms(solution& sol,
+                                                                 value_type
+                                                                     time)
+  requires ParabolicEquations<Equations>
+{
+  Kokkos::deep_copy(sol.gradient_device, value_type{0.0});
+  calc_gradient_volume_integral(sol);
+  transform_gradient_to_physical(sol);
+  calc_gradient_interface_flux(sol);
+  apply_gradient_boundary_condition(sol, time);
+
+  calc_gradient_surface_integral(sol);
+  apply_gradient_jacobian(sol);
+
+  calc_viscous_flux(sol);
+
+  calc_viscous_volume_integral(sol);
+  calc_viscous_interface_flux(sol);
+  apply_viscous_boundary_condition(sol, time);
+
+  calc_viscous_surface_integral(sol);
+}
+
+template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
+          class Mesh, class BoundarySetType>
+void StructuredSolver<Equations, Basis, VolumeFlux, SurfaceFlux, Mesh,
                       BoundarySetType>::calc_rhs(solution& sol,
                                                  value_type time) {
 
   Kokkos::deep_copy(sol.du_device, value_type{0.0});
 
-  calc_volume_integral(sol);
-
-  calc_interface_flux(sol);
-
-  apply_boundary_condition(sol, time);
+  calc_inviscid_rhs_terms(sol, time);
 
   if constexpr (ParabolicEquations<Equations>) {
-    Kokkos::deep_copy(sol.gradient_device, value_type{0.0});
-    calc_gradient_volume_integral(sol);
-    transform_gradient_to_physical(sol);
-    calc_gradient_interface_flux(sol);
-    apply_gradient_boundary_condition(sol, time);
-
-    calc_gradient_surface_integral(sol);
-    apply_gradient_jacobian(sol);
-
-    calc_viscous_flux(sol);
-
-    calc_viscous_volume_integral(sol);
-    calc_viscous_interface_flux(sol);
-    apply_viscous_boundary_condition(sol, time);
-
-    calc_viscous_surface_integral(sol);
+    calc_parabolic_rhs_terms(sol, time);
   }
 
   calc_surface_integral(sol);

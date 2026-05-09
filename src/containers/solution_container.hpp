@@ -224,6 +224,63 @@ struct Solution {
     return tmp;
   }
 
+  DataArray& state() { return u_device; }
+  const DataArray& state() const { return u_device; }
+
+  DataArray& rhs() { return du_device; }
+  const DataArray& rhs() const { return du_device; }
+
+  DataArray& surface_flux() { return surface_flux_value_device; }
+  const DataArray& surface_flux() const { return surface_flux_value_device; }
+
+  VectorFieldArray& gradient()
+    requires(HasParabolicTerms)
+  {
+    return gradient_device;
+  }
+
+  const VectorFieldArray& gradient() const
+    requires(HasParabolicTerms)
+  {
+    return gradient_device;
+  }
+
+  VectorFieldArray& viscous_flux()
+    requires(HasParabolicTerms)
+  {
+    return viscous_flux_device;
+  }
+
+  const VectorFieldArray& viscous_flux() const
+    requires(HasParabolicTerms)
+  {
+    return viscous_flux_device;
+  }
+
+  DataArray& gradient_surface_flux()
+    requires(HasParabolicTerms)
+  {
+    return gradient_surface_flux_device;
+  }
+
+  const DataArray& gradient_surface_flux() const
+    requires(HasParabolicTerms)
+  {
+    return gradient_surface_flux_device;
+  }
+
+  DataArray& viscous_surface_flux()
+    requires(HasParabolicTerms)
+  {
+    return viscous_surface_flux_value_device;
+  }
+
+  const DataArray& viscous_surface_flux() const
+    requires(HasParabolicTerms)
+  {
+    return viscous_surface_flux_value_device;
+  }
+
   DataArray u_device;
   DataArray du_device;
   DataArray surface_flux_value_device;
