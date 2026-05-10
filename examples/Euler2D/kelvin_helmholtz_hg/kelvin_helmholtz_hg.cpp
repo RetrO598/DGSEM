@@ -41,12 +41,16 @@ int main(int argc, char* argv[]) {
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
         DGSEM::HGIndicator<MyBasis, Eq>>;
+    using Mesh = DGSEM::StructuredMesh<value_type, 2>;
 
     DGSEM::BasisGuard<MyBasis> basis;
 
     auto boundaries =
         DGSEM::BoundarySet(DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{},
                            DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{});
+    using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                           Mesh, decltype(boundaries)>;
+    using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
 
     std::size_t nx = 256;
     std::size_t ny = 256;
@@ -66,18 +70,23 @@ int main(int argc, char* argv[]) {
     //                                                            domain_right};
     std::array<std::size_t, 2> n_cells = {nx, ny};
 
+    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq{1.4};
-    auto problem =
-        DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
-            eq, domain_left, domain_right, n_cells, boundaries, {true, true});
-    auto& solver = problem.solver();
-    auto& sol = problem.solution();
-    auto& container = problem.elements();
-    const auto& mesh = problem.mesh();
-    using Solution = typename decltype(problem)::SolutionType;
 
+    DGSEM::StructuredElementContainer<value_type, 2> container;
+    DGSEM::StructuredElementInitializer<
+        value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 2>>, 2>
+        initializer{DGSEM::LinearMapping<std::array<value_type, 2>>(
+                        domain_left, domain_right),
+                    {true, true}};
+
+    initializer.init_elements(n_cells, container);
+
+    Solver solver(eq, mesh, container, boundaries);
+
+    Solution sol(mesh);
     KelvinHelmholtzInitial<value_type> initial{};
-    problem.initialize(initial);
+    solver.initialize(initial, sol);
 
     using Analyzer =
         DGSEM::AnalyzerWrapper<MyBasis, Eq,
@@ -89,7 +98,8 @@ int main(int argc, char* argv[]) {
         DGSEM::VTUOutputObserver<value_type, MyBasis, Solution,
                                  decltype(container.node_coordinates), Eq>;
 
-    auto time_integrator = problem.make_ssprk3(t_final);
+    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
+    TimeIntegrator time_integrator(sol, mesh, t_final);
 
     const value_type cfl = 0.2;
     const value_type dx = (domain_right[0] - domain_left[0]) / nx;
@@ -108,6 +118,7 @@ int main(int argc, char* argv[]) {
         "kelvin_helmholtz_hg_output", sol, container.node_coordinates,
         n_cells));
     time_integrator.solve(solver, sol, dt);
+
   }
   return 0;
 }

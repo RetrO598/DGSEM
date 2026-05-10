@@ -23,6 +23,11 @@ int main() {
     auto boundaries =
         DGSEM::BoundarySet(DGSEM::PeriodicBC(), DGSEM::PeriodicBC());
 
+    using Mesh = DGSEM::StructuredMesh<double, 1>;
+    using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                           Mesh, decltype(boundaries)>;
+    using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
+
     // std::array<double, 2> domain_mesh = {-1.0, 1.0};
     std::array<double, 1> domain_left = {-1.0};
     std::array<double, 1> domain_right = {1.0};
@@ -31,23 +36,35 @@ int main() {
     //     DGSEM::BoundaryCondition::Periodic,
     //     DGSEM::BoundaryCondition::Periodic};
 
+    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq(1.0);
-    auto problem =
-        DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
-            eq, domain_left, domain_right, n_cells, boundaries, {true});
-    auto& solver = problem.solver();
-    auto& sol = problem.solution();
-    auto& container = problem.elements();
-    const auto& mesh = problem.mesh();
-    using Solution = typename decltype(problem)::SolutionType;
+
+    DGSEM::StructuredElementContainer<double, 1> container;
+    DGSEM::StructuredElementInitializer<double, MyBasis,
+                                        DGSEM::LinearMapping<double>, 1>
+        initializer{
+            DGSEM::LinearMapping<double>(domain_left[0], domain_right[0]),
+            {true}};
+
+    initializer.init_elements(n_cells, container);
+
+    // container.sync_to_device();
+
+    // container.check_data();
+
+    Solver solver(eq, mesh, container, boundaries);
+
+    DGSEM::Solution<Mesh, MyBasis, Eq> sol(mesh);
 
     DGSEM::CompositeWaveInitial<double> initial{};
 
     std::cout << "Testing solver.initialize()..." << std::endl;
-    problem.initialize(initial);
+    solver.initialize(initial, sol);
     std::cout << "solver.initialize() returned successfully." << std::endl;
     // sol.check_solution();
-    auto time_integrator = problem.make_ssprk3();
+    // using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Solution>;
+    using TimeIntegrator = DGSEM::SSPRK3<double, Solver, Mesh, Solution>;
+    TimeIntegrator time_integrator(sol, mesh);
     const double t_final = 4.0;
     const double cfl = 0.1;
     const double dx = (domain_right[0] - domain_left[0]) / n_cells[0];
@@ -104,6 +121,7 @@ int main() {
     nodes_file.close();
     std::cout << "Final solution saved to solution.txt and nodes.txt"
               << std::endl;
+
   }
   return 0;
 }

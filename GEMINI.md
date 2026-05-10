@@ -73,24 +73,10 @@ DGSEM::KokkosSession kokkos;
 DGSEM::BasisGuard<MyBasis> basis;
 ```
 
-### 2. Structured Problem Assembly
-For structured-grid simulations, `DGSEM::make_structured_problem` can assemble
-the mesh, element cache, solver, and solution container in one place while still
-leaving the lower-level `StructuredSolver` API available:
-
-```cpp
-auto problem = DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
-    eq, domain_left, domain_right, n_cells, boundaries, periodic);
-
-problem.initialize(initial_condition);
-auto time_integrator = problem.make_ssprk3(t_final);
-time_integrator.solve(problem.solver(), problem.solution(), dt);
-```
-
-### 3. GPU Performance Optimizations
+### 2. GPU Performance Optimizations
 - **Coalesced Access**: Basis matrices (like `derivative_split_transpose`) are pre-transposed during initialization to ensure coalesced memory access within CUDA kernels.
 - **Inlining**: All computational kernels must be marked with `KOKKOS_INLINE_FUNCTION` to be callable from both Host and Device.
 - **Concepts**: The codebase uses C++20 concepts (e.g., `std::derived_from`) to enforce interface requirements. For CUDA builds, ensure NVCC is configured with `--expt-relaxed-constexpr` and `--expt-extended-lambda`.
 
-### 4. Header-Only Structure
+### 3. Header-Only Structure
 Most of the core logic resides in `.hpp` files. Adding new equations or flux schemes involves creating a new header and ensuring it fulfills the required concepts/traits.

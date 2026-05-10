@@ -42,7 +42,6 @@ make -j$(nproc)
 ## 开发约定
 - **多项式基函数生命周期**：优先使用 `DGSEM::BasisGuard<Basis>` 管理初始化和释放。
 - **Kokkos 生命周期**：应用和示例代码可使用 `DGSEM::KokkosSession` 管理 `Kokkos::initialize()` / `Kokkos::finalize()`。
-- **结构网格装配**：优先使用 `DGSEM::make_structured_problem` 装配 mesh、element cache、solver 和 solution；底层 `StructuredSolver` API 仍可直接使用。
 - **GPU 性能优化**：优先使用 Kokkos 提供的并行化工具。
 - **头文件结构**：尽量保持模块化，避免循环依赖。
 

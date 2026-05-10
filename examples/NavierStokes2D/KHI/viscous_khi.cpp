@@ -53,6 +53,7 @@ int main(int argc, char* argv[]) {
     using VolumeFlux = DGSEM::VolumeIntegralShockCapturingHG<
         MyBasis, Eq, DGSEM::ChandrashekarFlux, DGSEM::LaxFriedrichsFlux,
         DGSEM::HGIndicator<MyBasis, Eq>>;
+    using Mesh = DGSEM::StructuredMesh<value_type, 2>;
 
     std::size_t nx = 256;
     std::size_t ny = 256;
@@ -77,24 +78,25 @@ int main(int argc, char* argv[]) {
         DGSEM::BoundarySet(DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{},
                            DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{});
 
+    using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                           Mesh, decltype(boundaries)>;
+    using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
+    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
+
     const std::array<value_type, 2> domain_left = {-1.0, -1.0};
     const std::array<value_type, 2> domain_right = {1.0, 1.0};
     const std::array<std::size_t, 2> n_cells = {nx, ny};
 
+    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq(gamma, mu, prandtl);
-    auto problem =
-        DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
-            eq, domain_left, domain_right, n_cells, boundaries, {true, true});
-    auto& solver = problem.solver();
-    auto& sol = problem.solution();
-    auto& container = problem.elements();
-    const auto& mesh = problem.mesh();
-    using Solution = typename decltype(problem)::SolutionType;
 
+    DGSEM::StructuredElementContainer<value_type, 2> container;
+    Solver solver(eq, mesh, container, boundaries, {true, true});
     solver.set_indicator_parameters(0.5, 0.001, false);
 
+    Solution sol(mesh);
     KelvinHelmholtzInitial<value_type> initial{gamma};
-    problem.initialize(initial);
+    solver.initialize(initial, sol);
 
     using Analyzer =
         DGSEM::AnalyzerWrapper<MyBasis, Eq,
@@ -117,7 +119,7 @@ int main(int argc, char* argv[]) {
               << ", mu=" << mu << ", dt=" << dt << ", t_final=" << t_final
               << '\n';
 
-    auto time_integrator = problem.make_ssprk3(t_final);
+    TimeIntegrator time_integrator(sol, mesh, t_final);
     time_integrator.add_observer(DGSEM::make_analysis_observer<MyBasis, Eq>(
         DGSEM::PointwiseAnalysisTag{}, analyzer, sol, n_cells,
         DGSEM::StopOnNaN<Eq>()));
@@ -127,6 +129,7 @@ int main(int argc, char* argv[]) {
         2000));
 
     time_integrator.solve(solver, sol, dt);
+
   }
   return 0;
 }

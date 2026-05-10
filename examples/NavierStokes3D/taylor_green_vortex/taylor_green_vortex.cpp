@@ -50,6 +50,7 @@ int main() {
     using SurfaceFlux = DGSEM::LaxFriedrichsFlux<Eq>;
     using VolumeFlux =
         DGSEM::VolumeIntegralSplitForm<MyBasis, Eq, DGSEM::ChandrashekarFlux>;
+    using Mesh = DGSEM::StructuredMesh<value_type, 3>;
 
     const value_type Ma = 0.1;
     const value_type R = 287.0;
@@ -65,6 +66,10 @@ int main() {
     auto boundaries = DGSEM::BoundarySet(
         DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{},
         DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{}, DGSEM::PeriodicBC{});
+    using Solver = DGSEM::StructuredSolver<Eq, MyBasis, VolumeFlux, SurfaceFlux,
+                                           Mesh, decltype(boundaries)>;
+    using Solution = DGSEM::Solution<Mesh, MyBasis, Eq>;
+    using TimeIntegrator = DGSEM::SSPRK3<value_type, Solver, Mesh, Solution>;
     using DGSEM::PrintObserver;
 
     const std::size_t nx = 32;
@@ -79,23 +84,24 @@ int main() {
         2.0 * std::numbers::pi, 2.0 * std::numbers::pi, 2.0 * std::numbers::pi};
     const std::array<std::size_t, 3> n_cells = {nx, ny, nz};
 
+    Mesh mesh(domain_left, domain_right, n_cells);
     Eq eq(gamma, mu, prandtl);
-    auto problem =
-        DGSEM::make_structured_problem<MyBasis, VolumeFlux, SurfaceFlux>(
-            eq, domain_left, domain_right, n_cells, boundaries,
-            {true, true, true});
-    auto& solver = problem.solver();
-    auto& sol = problem.solution();
-    auto& container = problem.elements();
-    const auto& mesh = problem.mesh();
-    using Solution = typename decltype(problem)::SolutionType;
 
+    DGSEM::StructuredElementContainer<value_type, 3> container;
+    DGSEM::StructuredElementInitializer<
+        value_type, MyBasis, DGSEM::LinearMapping<std::array<value_type, 3>>, 3>
+        initializer{DGSEM::LinearMapping<std::array<value_type, 3>>(
+                        domain_left, domain_right),
+                    {true, true, true}};
+    initializer.init_elements(n_cells, container);
     using VTUOutputObserver =
         DGSEM::VTUOutputObserver<value_type, MyBasis, Solution,
                                  decltype(container.node_coordinates), Eq>;
 
+    Solver solver(eq, mesh, container, boundaries);
+    Solution sol(mesh);
     TaylorGreenVortex3D<value_type> initial{};
-    problem.initialize(initial);
+    solver.initialize(initial, sol);
 
     const value_type cfl = 0.3;
     const value_type dx = (domain_right[0] - domain_left[0]) / nx;
@@ -107,7 +113,7 @@ int main() {
 
     std::cout << "dt: " << dt << std::endl;
 
-    auto time_integrator = problem.make_ssprk3(t_final);
+    TimeIntegrator time_integrator(sol, mesh, t_final);
 
     using Analyzer =
         DGSEM::AnalyzerWrapper<MyBasis, Eq,
@@ -134,6 +140,7 @@ int main() {
         n_cells, DGSEM::VolumeAverageCsvWriter<Eq>("static.csv")));
 
     time_integrator.solve(solver, sol, dt);
+
   }
   return 0;
 }
