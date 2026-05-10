@@ -19,17 +19,6 @@ template <class Equations, class Basis, class VolumeFlux, class SurfaceFlux,
           class Mesh, class BoundarySetType>
 class StructuredSolver {
 public:
-  static_assert(equations::EquationLike<Equations>,
-                "StructuredSolver requires an equation type with value_type, "
-                "NDIMS, and NVARS.");
-  static_assert(
-      requires {
-        Basis::NNodes;
-        Basis::initialize();
-        Basis::finalize();
-      }, "StructuredSolver requires a polynomial basis type with "
-         "NNodes, initialize(), and finalize().");
-
   using traits = equations::EquationTraits<Equations>;
   using value_type = typename traits::value_type;
   constexpr static std::size_t NDIMS = traits::NDIMS;

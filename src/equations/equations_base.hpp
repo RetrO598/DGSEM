@@ -2,7 +2,6 @@
 
 #include "Kokkos_Macros.hpp"
 #include <Kokkos_Core.hpp>
-#include <concepts>
 #include <cstddef>
 
 namespace DGSEM {
@@ -26,13 +25,6 @@ public:
 };
 
 template <class Equations>
-concept EquationLike = requires {
-  typename Equations::value_type;
-  { Equations::NDIMS } -> std::convertible_to<std::size_t>;
-  { Equations::NVARS } -> std::convertible_to<std::size_t>;
-};
-
-template <EquationLike Equations>
 struct EquationTraits {
   using value_type = typename Equations::value_type;
   constexpr static std::size_t NDIMS = Equations::NDIMS;
