@@ -1,0 +1,35 @@
+site_name: DGSEM Documentation
+site_description: Documentation for the DGSEM CFD solver
+repo_url: https://github.com/RetrO598/DGSEM
+repo_name: RetrO598/DGSEM
+
+docs_dir: doc
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+
+nav:
+  - Home: README.md
+  - Getting Started: getting_started.md
+  - Build Guide: build.md
+  - Architecture: architecture.md
+  - Solver Pipeline: solver_pipeline.md
+  - Examples: examples.md
+  - Extending:
+      - Equations: extending_equations.md
+      - Boundary Conditions: extending_boundary_conditions.md
+  - CUDA and Kokkos: cuda_notes.md
+  - API Reference Plan: api_reference.md
+
+markdown_extensions:
+  - admonition
+  - fenced_code
+  - tables
+  - toc:
+      permalink: true
