@@ -10,6 +10,16 @@ polynomial bases, compressible Euler and Navier-Stokes equations, numerical
 fluxes, shock-capturing volume integrals, and explicit Runge-Kutta time
 integration.
 
+## Gallery
+
+Kelvin-Helmholtz Instability | 2D Riemann Problem | Double Mach Reflection
+:-------------------------:|:-------------------------:|:-------------------------:
+<img width="300" src="doc/images/examples/KHI.jpeg"/> | <img width="300" src="doc/images/examples/riemann2d.jpeg"/> | <img width="300" src="doc/images/examples/double_mach_reflection.jpeg"/>
+
+Mach 80 Astrophysical Jet | Taylor-Green Vortex | Viscous Shock Tube
+:-------------------------:|:-------------------------:|:-------------------------:
+<img width="300" src="doc/images/examples/astroJet.jpeg"/> | <img width="300" src="doc/images/examples/tgv.jpeg"/> | <img width="300" src="doc/images/examples/viscous_shock_tube.jpeg"/>
+
 ## Documentation
 
 The project documentation is published with GitHub Pages:
@@ -94,4 +104,3 @@ works:
 <!-- ## License
 
 Add license information here before publishing a formal release. -->
-
