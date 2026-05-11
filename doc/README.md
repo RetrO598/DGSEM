@@ -1,7 +1,12 @@
 # DGSEM Documentation
 
 This directory contains the project documentation for DGSEM, a high-order
-DGSEM CFD solver built with C++20 and Kokkos.
+DGSEM (Discontinuous Galerkin Spectral Element Method) CFD solver built with C++20 and Kokkos.
+Aiming at facilitating the development and implementation of new numerical schemes, the solver 
+currently supports uniform structured meshes only. However, the unstructured curvilinear solver 
+will be developed in the future. 
+
+*This framework is still in the initial development phase.*
 
 The documentation is intentionally split into user-facing guides and
 developer-facing notes. The goal is to explain how the template components fit
